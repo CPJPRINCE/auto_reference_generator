@@ -23,6 +23,7 @@ dependencies=["pandas","openpyxl"]
 
 [project.optional-dependencies]
 addex = ["lxml","odfpy"]
+dev = ["pytest>=7.0"]
 
 [project.urls]
 Homepage = "https://github.com/CPJPRINCE/auto_reference_generator"
@@ -34,3 +35,8 @@ auto_ref = "auto_reference_generator.cli:run_cli"
 where = ['.']
 include = ['auto_reference_generator']
 exclude = []
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["tests"]
+python_files = ["test_*.py"]

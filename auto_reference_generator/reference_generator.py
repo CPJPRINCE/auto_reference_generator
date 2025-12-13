@@ -335,7 +335,8 @@ class ReferenceGenerator():
                         ref = str(ref).replace(str(self.suffix), "")
                     elif self.suffix_options == 'apply_to_both':
                         ref = str(ref).replace(str(self.suffix), "")
-                if pref:
+                # prefer explicit None check - pref may be 0 which is a valid value
+                if pref is not None:
                     ref = int(pref) + 1
                     pref = None
                 else:
@@ -501,11 +502,8 @@ class ReferenceGenerator():
                 if self.accession_prefix:
                     accession_ref = self.accession_prefix + delimiter + str(self.accession_count)
                 else:
-                    if self.accession_prefix:
-                        accession_ref = self.accession_prefix + self.accession_count
-                    else:
-                        accession_ref = self.accession_count
-                    self.accession_count += 1
+                    accession_ref = self.accession_count
+                self.accession_count += 1
             else:
                 accession_ref = None
         else:
