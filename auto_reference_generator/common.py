@@ -142,7 +142,7 @@ def filter_win_hidden(path: str):
     except:
         return False
 
-def keyword_replace(text: str, mode: None|str = "initialise", keyword_dict: dict|None = None, abbreviation_number: int|None = None) -> str:
+def keyword_replace(text: str, mode: Optional[str] = "initialise", keyword_dict: Optional[dict] = None, abbreviation_number: Optional[int] = None) -> str:
     text = text.translate(str.maketrans('','',r"""!"#$%&'()*+,-./:;<=>?@[\]^_`{|}~"""))
     if mode == "initialise":
         if len(text.split(" ")) > 1:

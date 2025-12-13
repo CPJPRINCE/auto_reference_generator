@@ -14,7 +14,7 @@ from auto_reference_generator.hash import *
 import os, time, datetime
 import pandas as pd
 import configparser
-from typing import Optional
+from typing import Optional, Union
 
 class ReferenceGenerator():
     """
@@ -61,7 +61,7 @@ class ReferenceGenerator():
                  hidden_flag: bool = False, 
                  output_format: str = "xlsx",
                  delimiter: str = "/",
-                 keywords: list|str|None = None,
+                 keywords: Union[list,str,None] = None,
                  keywords_mode: Optional[str] = None,
                  keywords_retain_order: bool = False,
                  keywords_case_sensitivity: Optional[bool] = True,
@@ -214,7 +214,7 @@ class ReferenceGenerator():
             print('Failed to Filter')
             raise SystemError()
 
-    def parse_directory_dict(self, file_path: str, level: int, ref: str|int) -> dict:
+    def parse_directory_dict(self, file_path: str, level: int, ref: Union[str,int]) -> dict:
         """
         Parses directory / file data into a dict which is then appended to a list
         """
@@ -257,7 +257,7 @@ class ReferenceGenerator():
             raise SystemError()
 
 
-    def list_directories(self, directory: str, ref: str|int = 1) -> None:
+    def list_directories(self, directory: str, ref: Union[str,int] = 1) -> None:
         """
         Generates a list of directories. Also calculates level and a running reference number.
         """            
@@ -469,7 +469,7 @@ class ReferenceGenerator():
             raise SystemError()
             pass
 
-    def accession_running_number(self, file_path: str, delimiter: str = "-") -> None|int|str:
+    def accession_running_number(self, file_path: str, delimiter: str = "-") -> Union[int,str,None]:
         """
         Generates a Running Number / Accession Code, can be set to 3 different "modes", counting Files, Directories or Both
         """
@@ -510,7 +510,7 @@ class ReferenceGenerator():
             accession_ref = None
         return accession_ref
 
-    def main(self) -> None|list:
+    def main(self) -> Optional[list]:
         """
         Runs Program :)
         """
