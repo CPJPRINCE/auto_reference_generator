@@ -52,6 +52,10 @@ def parse_args():
                         help = "Set the sorting method, 'folders_first' sorts folders first then files alphabetically; 'alphabetically' sorts alphabetically (ignoring folder distinction)")
     parser.add_argument("--options-file", required = False, nargs = '?', default = os.path.join(os.path.dirname(__file__),'options','options.properties'),
                         help = "Set the options file to use")
+    parser.add_argument("--physical-mode-input", required = False, nargs = '?', default = None,
+                        help="Set to conduct an Auto Generation of a Specify a path to a Spreadsheet")
+    parser.add_argument("--spreadsheet-to-sort",required= False, nargs = '?',default= None,
+                        help="Set to a path to a Spreadsheet containing an 'Archive_Reference' Column to sort the spreadsheet according to hierarchy")
     args = parser.parse_args()
     return args
 
@@ -96,7 +100,9 @@ def run_cli():
                             sort_key = sort_key,
                             delimiter = args.delimiter,
                             keywords_abbreviation_number = args.keywords_abbreviation_number,
-                            options_file = args.options_file).main()
+                            options_file = args.options_file,
+                            physical_mode_input = args.physical_mode_input,
+                            input_to_sort = args.spreadsheet_to_sort).main()
     print('Complete!')
 
 if __name__ == "__main__":
