@@ -84,6 +84,7 @@ class ReferenceGenerator():
         self.delimiter = delimiter
         if self.delimiter is None:
             self.delimiter_flag = False
+            self.delimiter = "/"
         else:
             self.delimiter_flag = True
         self.keywords_list = keywords
@@ -391,8 +392,6 @@ class ReferenceGenerator():
         for ref, parent, level in self.list_loop:
             c += 1
             print(f"Generating Auto Reference for: {c} / {tot}", end = "\r")
-            if self.delimiter_flag is False:
-                self.delimiter = "/"
             self.reference_loop(ref = ref, parent = parent, track = 1, level = level, delimiter = self.delimiter)
 
         self.df.loc[:, REFERENCE_FIELD] = self.reference_list
