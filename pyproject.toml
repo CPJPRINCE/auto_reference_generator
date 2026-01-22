@@ -23,7 +23,7 @@ dependencies=["pandas","openpyxl", "tqdm"]
 
 [project.optional-dependencies]
 addex = ["lxml","odfpy"]
-dev = ["pytest>=7.0", "pytest-cov>=4.0"]
+dev = ["pytest>=7.0"]
 
 [project.urls]
 Homepage = "https://github.com/CPJPRINCE/auto_reference_generator"
