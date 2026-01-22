@@ -19,7 +19,7 @@ classifiers = [
     "Operating System :: OS Independent",
     "Topic :: System :: Archiving"
     ]
-dependencies=["pandas","openpyxl"]
+dependencies=["pandas","openpyxl", "tqdm"]
 
 [project.optional-dependencies]
 addex = ["lxml","odfpy"]
