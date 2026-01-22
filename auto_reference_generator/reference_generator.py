@@ -9,12 +9,31 @@ author: Christopher Prince
 license: Apache License 2.0"
 """
 
-from auto_reference_generator.common import *
-from auto_reference_generator.hash import *
-import os, time, datetime
+from auto_reference_generator.common import define_output_file, \
+                                            keyword_replace, \
+                                            win_file_split, \
+                                            filter_win_hidden, \
+                                            path_check, \
+                                            running_time, \
+                                            win_256_check, \
+                                            export_csv, \
+                                            export_dict, \
+                                            export_json, \
+                                            export_list_txt, \
+                                            export_ods, \
+                                            export_xl, \
+                                            export_xml, \
+                                            suffix_addition, \
+                                            suffix_subtraction
+from auto_reference_generator.hash import HashGenerator
 import pandas as pd
-import configparser
+import os, configparser
 from typing import Optional, Union
+import logging
+from tqdm import tqdm
+from datetime import datetime
+
+logger = logging.getLogger(__name__)
 
 class ReferenceGenerator():
     """
@@ -54,7 +73,8 @@ class ReferenceGenerator():
                  accprefix: Optional[str] = None, 
                  start_ref: int = 1, 
                  fixity: Optional[str] = None, 
-                 empty_flag: bool = False, 
+                 empty_flag: bool = False,
+                 empty_export_flag: bool = False, 
                  skip_flag: bool = False, 
                  accession_flag: Optional[str] = None, 
                  meta_dir_flag: bool = True, 
@@ -108,87 +128,74 @@ class ReferenceGenerator():
         self.meta_dir_flag = meta_dir_flag
         self.accession_flag = accession_flag
         self.empty_flag = empty_flag
+        self.empty_export_flag = empty_export_flag
         self.skip_flag = skip_flag
         self.hidden_flag = hidden_flag
 
         if options_file is None:
             options_file = os.path.join(os.path.dirname(__file__),'options','options.properties')
         self.parse_config(options_file=os.path.abspath(options_file))
-        self.start_time = datetime.datetime.now()
 
     def parse_config(self, options_file = os.path.join('options','options.properties')) -> None:
         config = configparser.ConfigParser()
-        config.read(options_file, encoding='utf-8')
-        global INDEX_FIELD
-        INDEX_FIELD = config['options']['INDEX_FIELD']
-        global PATH_FIELD
-        PATH_FIELD = config['options']['PATH_FIELD']
-        global RELATIVE_FIELD
-        RELATIVE_FIELD = config['options']['RELATIVE_FIELD']
-        global PARENT_FIELD
-        PARENT_FIELD = config['options']['PARENT_FIELD']
-        global PARENT_REF
-        PARENT_REF = config['options']['PARENT_REF']
-        global REFERENCE_FIELD
-        REFERENCE_FIELD = config['options']['REFERENCE_FIELD']
-        global ACCESSION_FIELD
-        ACCESSION_FIELD = config['options']['ACCESSION_FIELD']
-        global REF_SECTION
-        REF_SECTION = config['options']['REF_SECTION']
-        global LEVEL_FIELD
-        LEVEL_FIELD = config['options']['LEVEL_FIELD']
-        global BASENAME_FIELD
-        BASENAME_FIELD = config['options']['BASENAME_FIELD']
-        global EXTENSION_FIELD
-        EXTENSION_FIELD = config['options']['EXTENSION_FIELD']
-        global ATTRIBUTE_FIELD
-        ATTRIBUTE_FIELD = config['options']['ATTRIBUTE_FIELD']
-        global SIZE_FIELD
-        SIZE_FIELD = config['options']['SIZE_FIELD']
-        global CREATEDATE_FIELD
-        CREATEDATE_FIELD = config['options']['CREATEDATE_FIELD']
-        global MODDATE_FIELD
-        MODDATE_FIELD = config['options']['MODDATE_FIELD']        
-        global ACCESSDATE_FIELD
-        ACCESSDATE_FIELD = config['options']['ACCESSDATE_FIELD']
-        global OUTPUTSUFFIX
-        OUTPUTSUFFIX = config['options']['OUTPUTSUFFIX']
-        global METAFOLDER
-        METAFOLDER = config['options']['METAFOLDER']
-        global EMPTYDIRSREMOVED
-        EMPTYDIRSREMOVED = config['options']['EMPTYSUFFIX']
-        global ACCDELIMTER
-        ACCDELIMTER = config['options']['ACCDELIMTER']
+        read_config = config.read(options_file, encoding='utf-8')
+        if not read_config:
+            logger.warning(f"Options file not found or not readable: {options_file}. Using defaults.")
 
-    def remove_empty_directories(self) -> None:
+        section = config['options'] if 'options' in config else {}
+
+        # Use section.get to allow fallback defaults when options file is missing or incomplete
+        self.INDEX_FIELD = section.get('INDEX_FIELD', "FullName")
+        self.PATH_FIELD = section.get('PATH_FIELD', "FullName")
+        self.RELATIVE_FIELD = section.get('RELATIVE_FIELD', "RelativeName")
+        self.PARENT_FIELD = section.get('PARENT_FIELD', "Parent")
+        self.PARENT_REF = section.get('PARENT_REF', "ParentRef")
+        self.REFERENCE_FIELD = section.get('REFERENCE_FIELD', "Archive_Reference")
+        self.ACCESSION_FIELD = section.get('ACCESSION_FIELD', "Accession")
+        self.REF_SECTION = section.get('REF_SECTION', "RefSection")
+        self.LEVEL_FIELD = section.get('LEVEL_FIELD', "Level")
+        self.BASENAME_FIELD = section.get('BASENAME_FIELD', "BaseName")
+        self.EXTENSION_FIELD = section.get('EXTENSION_FIELD', "Extension")
+        self.ATTRIBUTE_FIELD = section.get('ATTRIBUTE_FIELD', "Attribute")
+        self.SIZE_FIELD = section.get('SIZE_FIELD', "Size")
+        self.CREATEDATE_FIELD = section.get('CREATEDATE_FIELD', "CreatedDate")
+        self.MODDATE_FIELD = section.get('MODDATE_FIELD', "ModifyDate")
+        self.ACCESSDATE_FIELD = section.get('ACCESSDATE_FIELD', "AccessDate")
+        self.OUTPUTSUFFIX = section.get('OUTPUTSUFFIX', "_AutoRef")
+        self.METAFOLDER = section.get('METAFOLDER', "meta")
+        self.EMPTYDIRSREMOVED = section.get('EMPTYSUFFIX', "_EmptyDirsRemoved")
+        self.ACCDELIMTER = section.get('ACCDELIMTER', "-")
+        self.ALGORITHM_FIELD = section.get('ALGORITHM_FIELD', 'Algorithm')
+        self.HASH_FIELD = section.get('HASH_FIELD', 'Hash')
+        self.ACCFILE_KEYWORD = section.get('ACCFILE_KEYWORD', 'File')
+        self.ACCDIR_KEYWORD = section.get('ACCDIR_KEYWORD', 'Dir')
+        logger.debug(f'Configuration set to: {[{k,v} for k,v in (section.items())]}')
+
+    def remove_empty_directories(self, empty_export_flag: bool = False) -> None:
         """
         Remove empty directories with a warning.
         """
-        confirm_delete = input('\n***WARNING*** \
-                               \n\nYou have selected the Remove Empty Folders Option. \
-                               \nThis process is NOT reversible! \
-                               \n\nPlease confirm this by typing: "Y" \
-                               \nTyping any other character will abort the program... \
-                               \n\nPlease confirm your choice: ')
-        if confirm_delete.lower() != "y":
-            print('Aborting...')
-            time.sleep(1)
-            raise SystemExit()
-        empty_dirs = []
-        for dirpath, dirnames, filenames in os.walk(self.root, topdown = False):
-            if not any((dirnames, filenames)):
-                empty_dirs.append(dirpath)
-                try:
+        try:
+            empty_dirs = []
+            for dirpath, dirnames, filenames in os.walk(self.root, topdown = False):
+                if not any((dirnames, filenames)):
+                    empty_dirs.append(dirpath)
                     os.rmdir(dirpath)
-                    print(f'Removed Directory: {dirpath}')
-                except OSError as e:
-                    print(f"Error removing directory '{dirpath}': {e}")
-        if empty_dirs:
-            output_txt = define_output_file(self.output_path, self.root, METAFOLDER, self.meta_dir_flag, 
-                                            output_suffix = EMPTYDIRSREMOVED, output_format = "txt")
-            export_list_txt(empty_dirs, output_txt)
-        else:
-            print('No directories removed!')
+                    logger.info(f'Removed Directory: {dirpath}')
+            if empty_dirs:
+                if empty_export_flag is True:
+                    output_txt = define_output_file(self.output_path, self.root, self.METAFOLDER, self.meta_dir_flag, 
+                                                output_suffix = self.EMPTYDIRSREMOVED, output_format = "txt")
+                    export_list_txt(empty_dirs, output_txt)
+            else:
+                logger.info('No directories removed!')
+        except OSError as e:
+            logger.exception(f"OSError removing directory '{dirpath}': {e}")
+            raise
+        except Exception as e:
+            logger.exception(f"Unknown removing directory '{dirpath}': {e}")
+            raise
+
 
     def filter_directories(self, directory, sort_key = lambda x: (os.path.isfile(x), str.casefold(x))) -> list:
         """
@@ -196,23 +203,32 @@ class ReferenceGenerator():
         """
         try:
             if self.hidden_flag is False:
-                list_directories = sorted([win_256_check(os.path.join(directory, f.name)) for f in os.scandir(directory)
-                                        if not f.name.startswith('.')
-                                        and filter_win_hidden(win_256_check(os.path.join(directory, f.name))) is False
-                                        and f.name != METAFOLDER
-                                        and f.name != os.path.basename(__file__)],
-                                        key = sort_key)
+                list_directories = sorted([
+                    win_256_check(os.path.join(directory, f.name))
+                    for f in os.scandir(directory)
+                    if not f.name.startswith('.')
+                    and filter_win_hidden(win_256_check(os.path.join(directory, f.name))) is False
+                    and f.name != self.METAFOLDER
+                    and f.name not in ('auto_ref.exe', 'auto_ref.bin')
+                    and f.name != os.path.basename(__file__)
+                ], key = sort_key)
             elif self.hidden_flag is True:
-                list_directories = sorted([os.path.join(directory, f.name) for f in os.scandir(directory) \
-                                        if f.name != METAFOLDER \
-                                        and f.name != os.path.basename(__file__)],
-                                        key = sort_key)
+                list_directories = sorted([
+                    win_256_check(os.path.join(directory, f.name))
+                    for f in os.scandir(directory)
+                    if f.name != self.METAFOLDER
+                    and f.name not in ('auto_ref.exe', 'auto_ref.bin')
+                    and f.name != os.path.basename(__file__)
+                ], key = sort_key)
             else:
                 list_directories = []
             return list_directories
-        except Exception:
-            print('Failed to Filter')
-            raise SystemError()
+        except OSError as e:
+            logger.exception(f'OS Error parsing directory {directory}: {e}')
+            raise
+        except Exception as e:
+            logger.exception(f'Failed to filter {directory}: {e}')
+            raise
 
     def parse_directory_dict(self, file_path: str, level: int, ref: Union[str,int]) -> dict:
         """
@@ -223,39 +239,41 @@ class ReferenceGenerator():
                 parse_path = file_path.replace(u'\\\\?\\', "")
             else: 
                 parse_path = file_path
-            file_stats = os.stat(file_path)
+            file_stats = os.stat(parse_path)
             if self.accession_flag is not None:
                 if self.delimiter_flag is False:
-                    self.delimiter = ACCDELIMTER
+                    self.delimiter = self.ACCDELIMTER
                 acc_ref = self.accession_running_number(parse_path, self.delimiter)
                 self.accession_list.append(acc_ref)
-            if os.path.isdir(file_path):
+            if os.path.isdir(parse_path):
                 file_type = "Dir"
             else:
                 file_type = "File"
             class_dict = {
-                        PATH_FIELD: str(os.path.abspath(parse_path)),
-                        RELATIVE_FIELD: str(parse_path).replace(self.root_path, ""), 
-                        BASENAME_FIELD: os.path.splitext(os.path.basename(file_path))[0], 
-                        EXTENSION_FIELD: os.path.splitext(file_path)[1], 
-                        PARENT_FIELD: os.path.abspath(os.path.join(os.path.abspath(parse_path), os.pardir)), 
-                        ATTRIBUTE_FIELD: file_type, 
-                        SIZE_FIELD: file_stats.st_size, 
-                        CREATEDATE_FIELD: datetime.datetime.fromtimestamp(file_stats.st_ctime), 
-                        MODDATE_FIELD: datetime.datetime.fromtimestamp(file_stats.st_mtime), 
-                        ACCESSDATE_FIELD: datetime.datetime.fromtimestamp(file_stats.st_atime), 
-                        LEVEL_FIELD: level, 
-                        REF_SECTION: ref}
+                        self.PATH_FIELD: str(os.path.abspath(parse_path)),
+                        self.RELATIVE_FIELD: str(parse_path).replace(self.root_path, ""), 
+                        self.BASENAME_FIELD: os.path.splitext(os.path.basename(file_path))[0], 
+                        self.EXTENSION_FIELD: os.path.splitext(file_path)[1], 
+                        self.PARENT_FIELD: os.path.abspath(os.path.join(os.path.abspath(parse_path), os.pardir)), 
+                        self.ATTRIBUTE_FIELD: file_type, 
+                        self.SIZE_FIELD: file_stats.st_size, 
+                        self.CREATEDATE_FIELD: datetime.fromtimestamp(file_stats.st_ctime), 
+                        self.MODDATE_FIELD: datetime.fromtimestamp(file_stats.st_mtime), 
+                        self.ACCESSDATE_FIELD: datetime.fromtimestamp(file_stats.st_atime), 
+                        self.LEVEL_FIELD: level, 
+                        self.REF_SECTION: ref}
             
-            if self.fixity and not os.path.isdir(file_path):
-                hash = HashGenerator(self.fixity).hash_generator(file_path)
-                class_dict.update({"Algorithm": self.fixity, "Hash": hash})
+            if self.fixity and not os.path.isdir(parse_path):
+                hash = HashGenerator(self.fixity).hash_generator(parse_path)
+                class_dict.update({self.ALGORITHM_FIELD: self.fixity, self.HASH_FIELD: hash})
             self.record_list.append(class_dict)
             return class_dict
-        except:
-            print('Failed to Parse')
-            raise SystemError()
-
+        except OSError as e:
+            logger.exception(f'OS Error parsing dictionary {file_path}: {e}')
+            raise
+        except Exception as e:
+            logger.exception(f'Failed to parse {file_path}: {e}')
+            raise
 
     def list_directories(self, directory: str, ref: Union[str,int] = 1) -> None:
         """
@@ -270,71 +288,29 @@ class ReferenceGenerator():
             else:
                 level = directory.count(os.sep) - self.root_level + 1
             for file_path in list_directory:
-                file_name = win_file_split(file_path)
+
                 #Keyword Replacement
                 if self.keywords_list is not None:
-                    # Case Sensitivity Check
-                    if self.keywords_case_sensitivity is True:
-                        keyword_file_name = file_name.upper()
-                    elif self.keywords_case_sensitivity is False:
-                        keyword_file_name = file_name
-                    else:
-                        keyword_file_name = file_name
-                    if len(self.keywords_list) == 0 and os.path.isdir(file_path):
+                    #Does this not need to be ordered after keyword_replace is successful or does it just werk?
+                    tmp_ref = ref
+                    ref = keyword_replace(self.keywords_list, file_path, ref, self.keywords_mode,self.keywords_abbreviation_number, self.keywords_case_sensitivity)
+                    if ref != tmp_ref:
                         if self.keywords_retain_order is False:
-                            pref = ref - 1
+                            #Potentially may not be int...
+                            pref = tmp_ref - 1
                         elif self.keywords_retain_order is True:
-                            pref = ref
-                        ref = str(keyword_replace(keyword_file_name, mode=self.keywords_mode, abbreviation_number=self.keywords_abbreviation_number))
-                    elif any(keyword_file_name in keyword.upper() for keyword in self.keywords_list) and os.path.isdir(file_path):
-                        if self.keywords_retain_order is False:
-                            pref = ref - 1
-                        elif self.keywords_retain_order is True:
-                            pref = ref
-                        ref = str(keyword_replace(keyword_file_name, mode=self.keywords_mode, abbreviation_number=self.keywords_abbreviation_number))
-                    elif self.keywords_mode == "from_json" and os.path.isdir(file_path):
-                        try:
-                            os.path.exists(os.path.abspath(self.keywords_list[0]))
-                        except Exception as e:
-                            print('Error accessing JSON file, please check path.')
-                        import json
-                        with open(os.path.abspath(self.keywords_list[0])) as file:
-                            keyword_dict = json.load(file)
-                        if not isinstance(keyword_dict, dict):
-                            print('Keywords JSON file is not a valid dictionary.')
-                            raise SystemExit()
-                        if self.keywords_case_sensitivity is True:
-                            keyword_dict = {k.upper(): v for k, v in keyword_dict.items()}
-                        if any(keyword_file_name in keyword for keyword in keyword_dict.keys()) and os.path.isdir(file_path):
-                            if self.keywords_retain_order is False:
-                                pref = ref - 1
-                            elif self.keywords_retain_order is True:
-                                pref = ref
-                            ref = str(keyword_dict.get(keyword_file_name))
-                    else:
-                        pass
+                            pref = tmp_ref      
                 #Suffix Addition
                 if self.suffix is not None:
-                    if self.suffix_options == 'apply_to_files' and os.path.isfile(file_path):
-                        ref = str(ref) + str(self.suffix)
-                    elif self.suffix_options == 'apply_to_folders' and os.path.isdir(file_path):
-                        ref = str(ref) + str(self.suffix)
-                    elif self.suffix_options == 'apply_to_both':
-                        ref = str(ref) + str(self.suffix)
-                    else:
-                        pass
+                    ref = suffix_addition(file_path, ref, self.suffix, self.suffix_options)
+                # Level Limit Check 
                 if self.level_limit is not None and level > self.level_limit:
                     self.parse_directory_dict(file_path, level, ref='')
                 else:
                     self.parse_directory_dict(file_path, level, ref)
-                #Suffix Removal for next reference increment
+                # Suffix Removal for next reference increment
                 if self.suffix is not None:
-                    if self.suffix_options == 'apply_to_files' and os.path.isfile(file_path):
-                        ref = str(ref).replace(str(self.suffix), "")
-                    elif self.suffix_options == 'apply_to_folders' and os.path.isdir(file_path):
-                        ref = str(ref).replace(str(self.suffix), "")
-                    elif self.suffix_options == 'apply_to_both':
-                        ref = str(ref).replace(str(self.suffix), "")
+                    ref = suffix_subtraction(file_path, ref, self.suffix, self.suffix_options)
                 # prefer explicit None check - pref may be 0 which is a valid value
                 if pref is not None:
                     ref = int(pref) + 1
@@ -343,9 +319,12 @@ class ReferenceGenerator():
                     ref = int(ref) + 1
                 if os.path.isdir(file_path):
                     self.list_directories(file_path, ref = 1)
-        except Exception:
-            print("Error occurred for directory/file: {}".format(list_directory))
-            raise SystemError()
+        except OSError as e:
+            logger.exception(f"OS error parsing, {e}")
+            raise
+        except Exception as e:
+            logger.exception(f"Failed to parse, {e}")
+            raise
 
     def init_dataframe(self) -> pd.DataFrame:
         """
@@ -355,50 +334,60 @@ class ReferenceGenerator():
         (lookup is based on File Path's), and unnecessary data is dropped.
         Any errors are turned to 0 and the result are based on the reference loop initialisation.
         """
-        self.parse_directory_dict(file_path = self.root, level = 0, ref = 0)
-        self.list_directories(self.root, self.start_ref)
-        self.df = pd.DataFrame(self.record_list).copy()
-        
-        merged = self.df.merge(self.df[[INDEX_FIELD, REF_SECTION]], how = 'left', left_on = PARENT_FIELD, 
-                                right_on = INDEX_FIELD, suffixes=('_x', '_y'))
-        parent_col = f'{REF_SECTION}_y'
-        parent_series = (pd.to_numeric(merged[parent_col], errors='coerce').fillna(0).astype(int).astype(str))
+        try:
+            self.parse_directory_dict(file_path = self.root, level = 0, ref = 0)
+            self.list_directories(self.root, self.start_ref)
+            self.df = pd.DataFrame(self.record_list).copy()
+            
+            merged = self.df.merge(self.df[[self.INDEX_FIELD, self.REF_SECTION]], how = 'left', left_on = self.PARENT_FIELD, 
+                                    right_on = self.INDEX_FIELD, suffixes=('_x', '_y'))
+            parent_col = f'{self.REF_SECTION}_y'
+            parent_series = (pd.to_numeric(merged[parent_col], errors='coerce').fillna(0).astype(int).astype(str))
 
-        merged = merged.drop(columns=[f'{INDEX_FIELD}_y'])  
-        merged = merged.rename(columns={f'{REF_SECTION}_x': REF_SECTION, parent_col: PARENT_REF, f'{INDEX_FIELD}_x': INDEX_FIELD})
-        merged[PARENT_REF] = parent_series.astype(str)
-        self.df = merged
-        # old method - resulted in dtype warning
-        # self.df = self.df.merge(self.df[[INDEX_FIELD, REF_SECTION]], how = 'left', left_on = PARENT_FIELD, 
-        #                        right_on = INDEX_FIELD)
-        #self.df = self.df.drop([f'{INDEX_FIELD}_y'], axis = 1)
-        #self.df = self.df.rename(columns = {f'{REF_SECTION}_x': REF_SECTION, f'{REF_SECTION}_y': PARENT_REF, 
-        #                                  f'{INDEX_FIELD}_x': INDEX_FIELD})
-        #self.df.loc[:, PARENT_REF] = self.df[PARENT_REF].fillna(0)
-        #self.df.loc[:, PARENT_REF] = self.df.astype({PARENT_REF: str})
-        self.df.index.name = "Index"
-        self.list_loop = self.df[[REF_SECTION, PARENT_FIELD, LEVEL_FIELD]].values.tolist()
-        if self.skip_flag:
-            pass
-        else:
-            self.init_reference_loop()
-        return self.df
+            merged = merged.drop(columns=[f'{self.INDEX_FIELD}_y'])  
+            merged = merged.rename(columns={f'{self.REF_SECTION}_x': self.REF_SECTION, parent_col: self.PARENT_REF, f'{self.INDEX_FIELD}_x': self.INDEX_FIELD})
+            merged[self.PARENT_REF] = parent_series.astype(str)
+            self.df = merged
+            # old method - resulted in dtype warning
+            # self.df = self.df.merge(self.df[[INDEX_FIELD, REF_SECTION]], how = 'left', left_on = PARENT_FIELD, 
+            #                        right_on = INDEX_FIELD)
+            #self.df = self.df.drop([f'{INDEX_FIELD}_y'], axis = 1)
+            #self.df = self.df.rename(columns = {f'{REF_SECTION}_x': REF_SECTION, f'{REF_SECTION}_y': PARENT_REF, 
+            #                                  f'{INDEX_FIELD}_x': INDEX_FIELD})
+            #self.df.loc[:, PARENT_REF] = self.df[PARENT_REF].fillna(0)
+            #self.df.loc[:, PARENT_REF] = self.df.astype({PARENT_REF: str})
+
+            self.df.index.name = "Index"
+            self.list_loop = self.df[[self.REF_SECTION, self.PARENT_FIELD, self.LEVEL_FIELD]].values.tolist()
+            if self.skip_flag:
+                pass
+            else:
+                self.init_reference_loop()
+            return self.df
+        except OSError as e:
+            logger.exception(f"OS error intialising dataframe: {e}")
+            raise
+        except Exception as e:
+            logger.exception(f"Error intialising dataframe: {e}")
+            raise
 
     def init_reference_loop(self) -> pd.DataFrame:
         """
         Initialises the Reference loop. Sets some of the pre-variables necessary for the loop.
         """
-        c = 0
-        tot = len(self.list_loop)
-        for ref, parent, level in self.list_loop:
-            c += 1
-            print(f"Generating Auto Reference for: {c} / {tot}", end = "\r")
-            self.reference_loop(ref = ref, parent = parent, track = 1, level = level, delimiter = self.delimiter)
-
-        self.df.loc[:, REFERENCE_FIELD] = self.reference_list
-        if self.accession_flag is not None:
-            self.df.loc[:, ACCESSION_FIELD] = self.accession_list
-        return self.df
+        try:
+            for ref, parent, level in tqdm(self.list_loop, desc="Generating References", unit="ref"):
+                self.reference_loop(ref = ref, parent = parent, track = 1, level = level, delimiter = self.delimiter)
+            self.df.loc[:, self.REFERENCE_FIELD] = self.reference_list
+            if self.accession_flag is not None:
+                self.df.loc[:, self.ACCESSION_FIELD] = self.accession_list
+            return self.df
+        except KeyError as e:
+            logger.exception(f"KeyError intialising reference loop {self.list_loop}: {e}")
+            raise
+        except Exception as e:
+            logger.exception(f"Error intialising reference loop {self.list_loop}: {e}")
+            raise
 
     def reference_loop(self, ref: str, parent: str, track: int, level: int, new_ref: Optional[str] = None, delimiter: str = "/") -> None:
         """
@@ -429,8 +418,8 @@ class ReferenceGenerator():
         15) This is only called upon if the index does not fail. If it does fail, then the top-level is reached and the loop escaped.
         16) As this is acting within the Loop from the init stage, this will operate on all files within a list.
         """
-        try:
-            idx = self.df.loc[self.df[INDEX_FIELD] == parent,INDEX_FIELD].index
+        try:            
+            idx = self.df.loc[self.df[self.INDEX_FIELD] == parent,self.INDEX_FIELD].index
             if idx.size == 0:
                 if level == 0:
                     new_ref = str(ref)
@@ -442,7 +431,7 @@ class ReferenceGenerator():
                         new_ref = str(self.prefix) + delimiter + str(new_ref)
                 self.reference_list.append(new_ref)
             else:
-                parent_ref = self.df.loc[idx, REF_SECTION].item()
+                parent_ref = self.df.loc[idx, self.REF_SECTION].item()
                 if parent_ref == 0:
                     if track == 1:
                         new_ref = str(ref)
@@ -459,34 +448,36 @@ class ReferenceGenerator():
                             pass
                         else:
                             new_ref = str(parent_ref) + delimiter + str(new_ref)
-                parent = self.df.loc[idx,PARENT_FIELD].item()
+                parent = self.df.loc[idx,self.PARENT_FIELD].item()
                 track = track + 1
                 self.reference_loop(ref, parent, track, level, new_ref, delimiter=delimiter)
-
+        except KeyError as e:
+            logger.exception(f'KeyError iterating over references {ref}: {e}')
+            raise
         except Exception as e:
-            print('Error in Reference Loop.')
-            print(e)
-            raise SystemError()
-            pass
+            logger.exception(f'Failed to iterate over references {ref}: {e}')
+            raise
 
     def accession_running_number(self, file_path: str, delimiter: str = "-") -> Union[int,str,None]:
         """
         Generates a Running Number / Accession Code, can be set to 3 different "modes", counting Files, Directories or Both
         """
-        if self.accession_flag is not None:
-            if self.accession_flag.lower() == "file":
+        try:
+            if not self.accession_flag:
+                return None
+            if self.accession_flag.lower() == self.ACCFILE_KEYWORD.lower():
                 if os.path.isdir(file_path):
                     if self.accession_prefix is not None:
-                        accession_ref = self.accession_prefix + delimiter + "Dir"
+                        accession_ref = self.accession_prefix + delimiter + self.ACCDIR_KEYWORD
                     else:
-                        accession_ref = "Dir"
+                        accession_ref = self.ACCDIR_KEYWORD
                 else:
                     if self.accession_prefix is not None:
                         accession_ref = self.accession_prefix + delimiter + str(self.accession_count)
                     else:
                         accession_ref = self.accession_count
                     self.accession_count += 1
-            elif self.accession_flag.lower() == "dir":
+            elif self.accession_flag.lower() == self.ACCDIR_KEYWORD.lower():
                 if os.path.isdir(file_path):
                     if self.accession_prefix is not None:
                         accession_ref = self.accession_prefix + delimiter + str(self.accession_count)
@@ -495,9 +486,9 @@ class ReferenceGenerator():
                     self.accession_count += 1
                 else:
                     if self.accession_prefix is not None:
-                        accession_ref = self.accession_prefix + delimiter + "File"
+                        accession_ref = self.accession_prefix + delimiter + self.ACCFILE_KEYWORD
                     else:
-                        accession_ref = "File"
+                        accession_ref = self.ACCFILE_KEYWORD
             elif self.accession_flag.lower() == "all":
                 if self.accession_prefix:
                     accession_ref = self.accession_prefix + delimiter + str(self.accession_count)
@@ -506,19 +497,23 @@ class ReferenceGenerator():
                 self.accession_count += 1
             else:
                 accession_ref = None
-        else:
-            accession_ref = None
-        return accession_ref
+            return accession_ref
+        except OSError as e:
+            logger.exception(f'OS Error generating accession running number for {file_path}: {e}')
+            raise
+        except Exception as e:
+            logger.exception(f'Failed to generate accession running number for {file_path}: {e}')
+            raise
 
     def main(self) -> Optional[list]:
         """
         Runs Program :)
         """
         if self.empty_flag:
-            self.remove_empty_directories()
+            self.remove_empty_directories(self.empty_export_flag)
         self.init_dataframe()
         output_file = define_output_file(self.output_path, self.root, meta_dir_flag = self.meta_dir_flag, 
-                                         output_suffix = OUTPUTSUFFIX ,output_format = self.output_format)
+                                         output_suffix = self.OUTPUTSUFFIX ,output_format = self.output_format)
         if self.output_format == "xlsx":
             export_xl(df = self.df, output_filename = output_file)
         elif self.output_format == "csv":
@@ -531,4 +526,3 @@ class ReferenceGenerator():
             export_xml(df = self.df, output_filename = output_file)
         elif self.output_format == "dict":
             return export_dict(df = self.df)
-        print_running_time(self.start_time)
