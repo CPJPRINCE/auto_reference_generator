@@ -26,6 +26,9 @@ jobs:
 
       - name: Build Windows executable with Nuitka
         run: |
+          $tag = "${{ github.ref_name }}"
+          $version = [regex]::Match($tag, '\d+\.\d+\.\d+').Value
+          if ($version -eq "") { $version = "1.0.0" }
           python -m nuitka `
             --onefile `
             --output-dir=build `
@@ -34,8 +37,8 @@ jobs:
             --windows-console-mode=attach `
             --company-name="Auto Reference Generator" `
             --product-name="Auto Reference Generator" `
-            --file-version="${{ github.ref_name }}" `
-            --product-version="${{ github.ref_name }}" `
+            --file-version="$version" `
+            --product-version="$version" `
             --copyright="Copyright $(Get-Date -Format yyyy)" `
             auto_reference_generator/cli.py
 
@@ -89,7 +92,7 @@ jobs:
             --onefile \
             --output-dir=build \
             --include-package=auto_reference_generator \
-            --include-data-dir=auto_reference_generator/options:auto_reference_generator/options \
+            --include-data-dir=auto_reference_generator/options=auto_reference_generator/options \
             --linux-onefile-target-glibc=2.29 \
             auto_reference_generator/cli.py
 
@@ -139,7 +142,7 @@ jobs:
             --onefile \
             --output-dir=build \
             --include-package=auto_reference_generator \
-            --include-data-dir=auto_reference_generator/options:auto_reference_generator/options \
+            --include-data-dir=auto_reference_generator/options=auto_reference_generator/options \
             --macos-create-app-bundle \
             auto_reference_generator/cli.py
 
