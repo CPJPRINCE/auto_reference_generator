@@ -2,12 +2,10 @@ name: Build Portable Executables with Nuitka
 
 on:
   push:
-    branches: [ master ]
     tags:
       - 'v*'
       - 'test-*'
   pull_request:
-    branches: [ master ]
     tags:
       - 'v*'
       - 'test-*'
