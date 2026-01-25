@@ -60,6 +60,7 @@ jobs:
       - name: Upload to release
         uses: softprops/action-gh-release@v1
         with:
+          draft: true
           files: auto_ref_windows_*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -93,12 +94,12 @@ jobs:
             --output-dir=build \
             --include-package=auto_reference_generator \
             --include-data-dir=auto_reference_generator/options=auto_reference_generator/options \
-            --linux-onefile-target-glibc=2.29 \
             auto_reference_generator/cli.py
 
       - name: Rename executable
         run: |
-          mv build/cli build/auto_ref
+          ls -la build/
+          find build -type f -executable ! -type d | head -1 | xargs -I {} mv {} build/auto_ref
 
       - name: Create Linux artifact archive
         run: |
@@ -115,6 +116,7 @@ jobs:
       - name: Upload to release
         uses: softprops/action-gh-release@v1
         with:
+          draft: true
           files: auto_ref_linux_*.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -148,7 +150,8 @@ jobs:
 
       - name: Rename executable
         run: |
-          mv build/cli build/auto_ref
+          ls -la build/
+          find build -type f -executable ! -type d | head -1 | xargs -I {} mv {} build/auto_ref
 
       - name: Create macOS artifact archive
         run: |
@@ -165,6 +168,7 @@ jobs:
       - name: Upload to release
         uses: softprops/action-gh-release@v1
         with:
+          draft: true
           files: auto_ref_macos_*.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
