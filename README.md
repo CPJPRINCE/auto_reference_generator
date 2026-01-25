@@ -5,23 +5,30 @@ A small python programme to generate hieracrchical archival reference for files 
 Badges: PyPI | CI | Coverage | License
 
 ## Quick Start
-Install:
-```
-pip install -U auto_reference_generator
-```
-Or download portable version.
 
-Run:
-```
+### Option 1: Using pip (Recommended for Python users)
+```bash
+pip install -U auto_reference_generator
 auto_ref /path/to/root -p PREFIX -o /path/to/output
 ```
 
-Generates a `meta/` folder with output `root_AutoRef.xlsx`
+### Option 2: Using Portable Executable (No Python Required)
+Download the latest portable executable for your platform from [Releases](https://github.com/CPJPRINCE/auto_reference_generator/releases):
+- **Windows**: `auto_ref_windows_*.zip` 
+- **Linux**: `auto_ref_linux_*.tar.gz`
+- **macOS**: `auto_ref_macos_*.tar.gz`
 
-To use the portable version navigate to the Downloaded then run with:
+Extract and run:
+```bash
+# Windows
+.\auto_ref.exe .\path\to\root -p PREFIX -o .\path\to\output
+
+# Linux/macOS
+./auto_ref /path/to/root -p PREFIX -o /path/to/output
 ```
-.\auto_ref.exe .\path\to\root
-```
+
+### Output
+Generates a `meta/` folder with output `root_AutoRef.xlsx`
 
 ## Version & Package info
 
