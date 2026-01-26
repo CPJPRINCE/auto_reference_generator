@@ -25,7 +25,9 @@ jobs:
           pip install -e .
 
       - name: Build Windows executable with Nuitka
-        run: |
+      env:
+        NUITKA_CACHE_DIR: ${{ runner.temp }}/nuitka_cache
+      run: |
           $tag = "${{ github.ref_name }}"
           $version = [regex]::Match($tag, '\d+\.\d+\.\d+').Value
           if ($version -eq "") { $version = "1.0.0" }
@@ -41,6 +43,7 @@ jobs:
             --product-version="$version" `
             --copyright="Copyright $(Get-Date -Format yyyy)" `
             --assume-yes-for-downloads `
+            --quiet `
             auto_reference_generator/cli.py
 
       - name: Rename executable
@@ -96,21 +99,25 @@ jobs:
             --include-package=auto_reference_generator \
             --include-data-dir=auto_reference_generator/options=auto_reference_generator/options \
             --assume-yes-for-downloads \
+            --quiet \
             auto_reference_generator/cli.py
 
       - name: Rename executable
         run: |
           ls -la build/
           # Find and rename the executable file
-          if [ -f "build/cli" ]; then
+          if [ -f "build/cli.bin" ]; then
+            mv build/cli.bin build/auto_ref
+          elif [ -f "build/cli" ]; then
             mv build/cli build/auto_ref
           else
             # Fallback: find any executable
-            EXEC=$(find build -maxdepth 1 -type f -perm +111 2>/dev/null | head -1)
+            EXEC=$(find build -maxdepth 1 -type f \( -executable -o -name "*.bin" \) 2>/dev/null | grep -v ".dist" | head -1)
             if [ -n "$EXEC" ]; then
               mv "$EXEC" build/auto_ref
             else
               echo "Error: No executable found in build directory"
+              ls -la build/
               exit 1
             fi
           fi
@@ -166,21 +173,25 @@ jobs:
             --include-data-dir=auto_reference_generator/options=auto_reference_generator/options \
             --macos-create-app-bundle \
             --assume-yes-for-downloads \
+            --quiet \
             auto_reference_generator/cli.py
 
       - name: Rename executable
         run: |
           ls -la build/
           # Find and rename the executable file
-          if [ -f "build/cli" ]; then
+          if [ -f "build/cli.bin" ]; then
+            mv build/cli.bin build/auto_ref
+          elif [ -f "build/cli" ]; then
             mv build/cli build/auto_ref
           else
             # Fallback: find any executable
-            EXEC=$(find build -maxdepth 1 -type f -perm +111 2>/dev/null | head -1)
+            EXEC=$(find build -maxdepth 1 -type f \( -executable -o -name "*.bin" \) 2>/dev/null | grep -v ".dist" | head -1)
             if [ -n "$EXEC" ]; then
               mv "$EXEC" build/auto_ref
             else
               echo "Error: No executable found in build directory"
+              ls -la build/
               exit 1
             fi
           fi
