@@ -38,6 +38,9 @@ jobs:
               --onefile `
               -o auto_ref `
               --output-dir=build `
+              --include-package=odf `
+              --include-package=lxml `
+              --include-package=pandas `
               --include-package=auto_reference_generator `
               --include-data-dir=auto_reference_generator/options=auto_reference_generator/options `
               --windows-console-mode=attach `
@@ -97,6 +100,9 @@ jobs:
             --onefile \
             -o auto_ref \
             --output-dir=build \
+            --include-package=odf \
+            --include-package=lxml \
+            --include-package=pandas \
             --include-package=auto_reference_generator \
             --include-data-dir=auto_reference_generator/options=auto_reference_generator/options \
             --assume-yes-for-downloads \
@@ -150,6 +156,9 @@ jobs:
             --onefile \
             -o auto_ref \
             --output-dir=build \
+            --include-package=odf \
+            --include-package=lxml \
+            --include-package=pandas \
             --include-package=auto_reference_generator \
             --include-data-dir=auto_reference_generator/options=auto_reference_generator/options \
             --macos-create-app-bundle \
