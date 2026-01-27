@@ -6,6 +6,9 @@ on:
       - 'v*'
       - 'test-*'
 
+permissions:
+  contents: write
+
 jobs:
   build-windows:
     name: Build Windows Portable
@@ -33,6 +36,7 @@ jobs:
             if ($version -eq "") { $version = "1.0.0" }
             python -m nuitka `
               --onefile `
+              -o auto_ref `
               --output-dir=build `
               --include-package=auto_reference_generator `
               --include-data-dir=auto_reference_generator/options=auto_reference_generator/options `
@@ -45,10 +49,6 @@ jobs:
               --assume-yes-for-downloads `
               --quiet `
               auto_reference_generator/cli.py
-
-      - name: Rename executable
-        run: |
-          Rename-Item -Path "build/cli.exe" -NewName "auto_ref.exe"
 
       - name: Create Windows artifact archive
         run: |
@@ -95,33 +95,13 @@ jobs:
         run: |
           python -m nuitka \
             --onefile \
+            -o auto_ref \
             --output-dir=build \
             --include-package=auto_reference_generator \
             --include-data-dir=auto_reference_generator/options=auto_reference_generator/options \
             --assume-yes-for-downloads \
             --quiet \
             auto_reference_generator/cli.py
-
-      - name: Rename executable
-        run: |
-          ls -la build/
-          # Find and rename the executable file
-          if [ -f "build/cli.bin" ]; then
-            mv build/cli.bin build/auto_ref
-          elif [ -f "build/cli" ]; then
-            mv build/cli build/auto_ref
-          else
-            # Fallback: find any executable
-            EXEC=$(find build -maxdepth 1 -type f \( -executable -o -name "*.bin" \) 2>/dev/null | grep -v ".dist" | head -1)
-            if [ -n "$EXEC" ]; then
-              mv "$EXEC" build/auto_ref
-            else
-              echo "Error: No executable found in build directory"
-              ls -la build/
-              exit 1
-            fi
-          fi
-          ls -la build/auto_ref
 
       - name: Create Linux artifact archive
         run: |
@@ -168,6 +148,7 @@ jobs:
         run: |
           python -m nuitka \
             --onefile \
+            -o auto_ref \
             --output-dir=build \
             --include-package=auto_reference_generator \
             --include-data-dir=auto_reference_generator/options=auto_reference_generator/options \
@@ -175,27 +156,6 @@ jobs:
             --assume-yes-for-downloads \
             --quiet \
             auto_reference_generator/cli.py
-
-      - name: Rename executable
-        run: |
-          ls -la build/
-          # Find and rename the executable file
-          if [ -f "build/cli.bin" ]; then
-            mv build/cli.bin build/auto_ref
-          elif [ -f "build/cli" ]; then
-            mv build/cli build/auto_ref
-          else
-            # Fallback: find any executable
-            EXEC=$(find build -maxdepth 1 -type f \( -executable -o -name "*.bin" \) 2>/dev/null | grep -v ".dist" | head -1)
-            if [ -n "$EXEC" ]; then
-              mv "$EXEC" build/auto_ref
-            else
-              echo "Error: No executable found in build directory"
-              ls -la build/
-              exit 1
-            fi
-          fi
-          ls -la build/auto_ref
 
       - name: Create macOS artifact archive
         run: |
