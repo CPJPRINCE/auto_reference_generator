@@ -25,26 +25,26 @@ jobs:
           pip install -e .
 
       - name: Build Windows executable with Nuitka
-      env:
-        NUITKA_CACHE_DIR: ${{ runner.temp }}/nuitka_cache
-      run: |
-          $tag = "${{ github.ref_name }}"
-          $version = [regex]::Match($tag, '\d+\.\d+\.\d+').Value
-          if ($version -eq "") { $version = "1.0.0" }
-          python -m nuitka `
-            --onefile `
-            --output-dir=build `
-            --include-package=auto_reference_generator `
-            --include-data-dir=auto_reference_generator/options=auto_reference_generator/options `
-            --windows-console-mode=attach `
-            --company-name="Auto Reference Generator" `
-            --product-name="Auto Reference Generator" `
-            --file-version="$version" `
-            --product-version="$version" `
-            --copyright="Copyright $(Get-Date -Format yyyy)" `
-            --assume-yes-for-downloads `
-            --quiet `
-            auto_reference_generator/cli.py
+        env:
+          NUITKA_CACHE_DIR: ${{ runner.temp }}/nuitka_cache
+        run: |
+            $tag = "${{ github.ref_name }}"
+            $version = [regex]::Match($tag, '\d+\.\d+\.\d+').Value
+            if ($version -eq "") { $version = "1.0.0" }
+            python -m nuitka `
+              --onefile `
+              --output-dir=build `
+              --include-package=auto_reference_generator `
+              --include-data-dir=auto_reference_generator/options=auto_reference_generator/options `
+              --windows-console-mode=attach `
+              --company-name="Auto Reference Generator" `
+              --product-name="Auto Reference Generator" `
+              --file-version="$version" `
+              --product-version="$version" `
+              --copyright="Copyright $(Get-Date -Format yyyy)" `
+              --assume-yes-for-downloads `
+              --quiet `
+              auto_reference_generator/cli.py
 
       - name: Rename executable
         run: |
