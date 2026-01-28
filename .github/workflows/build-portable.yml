@@ -23,6 +23,7 @@ jobs:
 
       - name: Install dependencies
         run: |
+          choco install llvm -y
           python -m pip install --upgrade pip
           pip install nuitka ordered-set zstandard odf lxml
           pip install -e .
@@ -42,7 +43,7 @@ jobs:
               --include-package=lxml `
               --include-package=pandas `
               --include-package=auto_reference_generator `
-              --include-data-dir=auto_reference_generator/options=auto_reference_generator/options `
+              --include-data-dir=auto_reference_generator/options=options `
               --windows-console-mode=attach `
               --company-name="Auto Reference Generator" `
               --product-name="Auto Reference Generator" `
@@ -51,6 +52,7 @@ jobs:
               --copyright="Copyright $(Get-Date -Format yyyy)" `
               --assume-yes-for-downloads `
               --quiet `
+              --clang `
               auto_reference_generator/cli.py
 
       - name: Create Windows artifact archive
@@ -86,7 +88,7 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y patchelf
+          sudo apt-get install -y patchelf clang
 
       - name: Install Python dependencies
         run: |
@@ -104,7 +106,7 @@ jobs:
             --include-package=lxml \
             --include-package=pandas \
             --include-package=auto_reference_generator \
-            --include-data-dir=auto_reference_generator/options=auto_reference_generator/options \
+            --include-data-dir=auto_reference_generator/options=options \
             --assume-yes-for-downloads \
             --quiet \
             auto_reference_generator/cli.py
@@ -115,7 +117,7 @@ jobs:
           version="${version#v}"
           version="${version#test-}"
           if [ -z "$version" ] || [ "$version" = "master" ]; then
-            version="1.3.5"
+            version="1.0.0"
           fi
           tar -czf "auto_ref_linux_${version}.tar.gz" -C build auto_ref
 
@@ -160,7 +162,7 @@ jobs:
             --include-package=lxml \
             --include-package=pandas \
             --include-package=auto_reference_generator \
-            --include-data-dir=auto_reference_generator/options=auto_reference_generator/options \
+            --include-data-dir=auto_reference_generator/options=options \
             --macos-create-app-bundle \
             --assume-yes-for-downloads \
             --quiet \
@@ -172,7 +174,7 @@ jobs:
           version="${version#v}"
           version="${version#test-}"
           if [ -z "$version" ] || [ "$version" = "master" ]; then
-            version="1.3.5"
+            version="1.0.0"
           fi
           tar -czf "auto_ref_macos_${version}.tar.gz" -C build auto_ref
 

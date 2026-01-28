@@ -338,7 +338,6 @@ class ReferenceGenerator():
             self.parse_directory_dict(file_path = self.root, level = 0, ref = 0)
             self.list_directories(self.root, self.start_ref)
             self.df = pd.DataFrame(self.record_list).copy()
-            
             merged = self.df.merge(self.df[[self.INDEX_FIELD, self.REF_SECTION]], how = 'left', left_on = self.PARENT_FIELD, 
                                     right_on = self.INDEX_FIELD, suffixes=('_x', '_y'))
             parent_col = f'{self.REF_SECTION}_y'
@@ -346,7 +345,8 @@ class ReferenceGenerator():
 
             merged = merged.drop(columns=[f'{self.INDEX_FIELD}_y'])  
             merged = merged.rename(columns={f'{self.REF_SECTION}_x': self.REF_SECTION, parent_col: self.PARENT_REF, f'{self.INDEX_FIELD}_x': self.INDEX_FIELD})
-            merged[self.PARENT_REF] = parent_series.astype(str)
+            merged[self.PARENT_REF] = merged[self.PARENT_REF].astype(str)
+            merged.loc[:, self.PARENT_REF] = parent_series.astype(str)
             self.df = merged
             # old method - resulted in dtype warning
             # self.df = self.df.merge(self.df[[INDEX_FIELD, REF_SECTION]], how = 'left', left_on = PARENT_FIELD, 
