@@ -345,7 +345,7 @@ class ReferenceGenerator():
 
             merged = merged.drop(columns=[f'{self.INDEX_FIELD}_y'])  
             merged = merged.rename(columns={f'{self.REF_SECTION}_x': self.REF_SECTION, parent_col: self.PARENT_REF, f'{self.INDEX_FIELD}_x': self.INDEX_FIELD})
-            merged[self.PARENT_REF] = merged[self.PARENT_REF].astype(str)
+            merged = merged.astype({self.PARENT_REF:str})
             merged.loc[:, self.PARENT_REF] = parent_series.astype(str)
             self.df = merged
             # old method - resulted in dtype warning
