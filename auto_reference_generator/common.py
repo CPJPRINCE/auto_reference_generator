@@ -7,7 +7,7 @@ license: Apache License 2.0"
 
 import os, time, sys, stat, json, logging
 import pandas as pd
-from typing import Optional
+from typing import Optional, Union
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
@@ -137,7 +137,7 @@ def filter_win_hidden(path: str):
     except:
         return False
 
-def keyword_replace(keywords_list: list | str, file_path: str, original_ref: str, keywords_mode: Optional[str] = "initialise", abbreviation_number: Optional[int] = None, keywords_case_sensitivity: Optional[bool] = False) -> str:
+def keyword_replace(keywords_list: Union[list, str], file_path: str, original_ref: str, keywords_mode: Optional[str] = "initialise", abbreviation_number: Optional[int] = None, keywords_case_sensitivity: Optional[bool] = False) -> str:
     file_name = win_file_split(file_path)
     if keywords_mode in ("initialise","firstletters"):
         if keywords_case_sensitivity is True:
