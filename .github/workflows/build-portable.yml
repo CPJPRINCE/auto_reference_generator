@@ -53,6 +53,7 @@ jobs:
               --assume-yes-for-downloads `
               --quiet `
               --clang `
+              --mingw64 `
               auto_reference_generator/cli.py
 
       - name: Create Windows artifact archive
