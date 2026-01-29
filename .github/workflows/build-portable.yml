@@ -104,7 +104,7 @@ jobs:
           python -m nuitka \
             --onefile \
             --standalone \
-            --follow-imports \            
+            --follow-imports \
             -o auto_ref \
             --output-dir=build \
             --include-package=odf \
@@ -162,7 +162,7 @@ jobs:
           python -m nuitka \
             --onefile \
             --standalone \
-            --follow-imports \            
+            --follow-imports \
             -o auto_ref \
             --output-dir=build \
             --include-package=odf \
