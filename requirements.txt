@@ -1,0 +1,27 @@
+-e git+https://github.com/CPJPRINCE/auto_classification_generator@1d8ab22b353aec0d2474d59aa73b28853f5bbacf#egg=auto_reference_generator
+cfgv==3.5.0
+coverage==7.13.0
+distlib==0.4.0
+et_xmlfile==2.0.0
+filelock==3.20.3
+identify==2.6.16
+iniconfig==2.3.0
+nodeenv==1.10.0
+numpy==2.3.5
+openpyxl==3.1.5
+packaging==25.0
+pandas==2.3.3
+platformdirs==4.5.1
+pluggy==1.6.0
+pre_commit==4.5.1
+Pygments==2.19.2
+pytest==9.0.2
+pytest-cov==7.0.0
+python-dateutil==2.9.0.post0
+pytz==2025.2
+PyYAML==6.0.3
+six==1.17.0
+tqdm==4.67.1
+tzdata==2025.2
+virtualenv==20.36.1
+pre-commit
