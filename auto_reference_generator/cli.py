@@ -6,67 +6,73 @@ from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
-def parse_args():
+def create_parser():
     parser = argparse.ArgumentParser(prog="Auto_Reference_Generator", description = "Auto Reference Generator for Digital Cataloguing")
-    parser.add_argument('root', nargs = '?', default = os.getcwd(),
-                        help = "The root directory to create references for")
-    parser.add_argument("-p", "--prefix", required = False, nargs = '?',
-                        help = "Set a prefix to append onto generated references")
-    parser.add_argument("-s", "--suffix", required = False, nargs = '?',
-                        help = "Set a suffix to append onto generated references")
-    parser.add_argument("--suffix-option", required = False, choices= ['apply_to_files','apply_to_folders','apply_to_both'], default = 'apply_to_files',
-                        help = "Set whether to apply the suffix to files, folders or both when generating references")
-    parser.add_argument("--remove-empty", required = False, action = 'store_true',
-                        help = "Sets the Program to remove any Empty Directory and Log removals to a text file")
-    parser.add_argument("--empty-export", required = False, action = 'store_false',
-                        help = "Sets the program to not export a log of removed empty directories, by default will export, this flag disables that")
-    parser.add_argument("-acc", "--accession", required = False, choices = ['dir', 'file', 'all'], default = None, type = str.lower,
-                        help="Sets the program to create an accession listing - IE a running number of the files.")
-    parser.add_argument("-accp", "--acc-prefix", required = False, nargs = '?',
-                        help = "Sets the Prefix for Accession Mode")
-    parser.add_argument("-o", "--output", required = False, nargs = '?',
-                        help = "Set the output directory for created spreadsheet")
-    parser.add_argument("-l", "--level-limit", required = False, nargs = '?', type = int,
-                        help = "Set a level limit to generate references to")
-    parser.add_argument("-str", "--start-ref", required = False, nargs = '?', default = 1, type = int,
-                        help = "Set the starting reference number. Won't affect sub-folders/files")
-    parser.add_argument("-dlm", "--delimiter", required = False, nargs= '?', type = str,
-                        help = "Set the delimiter to use between levels")
-    parser.add_argument("--disable-meta-dir", required = False, action = 'store_false', default = True,
-                        help = "Set to disable creating a 'meta' file for spreadsheet; can be used in combination with output")
-    parser.add_argument("-skp","--skip", required = False, action = 'store_true', default = False,
-                        help = "Set to skip creating references, will generate a spreadsheet listing")
-    parser.add_argument("-hid","--hidden", required = False , action = 'store_true', default = False,
-                        help = "Set to include hidden files/folders in the listing")
-    parser.add_argument("-fmt", "--output-format", required = False, default = "xlsx", choices = ['xlsx', 'csv', 'json', 'ods', 'xml', 'dict'],
-                        help = "Set to set output format. Note ods requires odfpy; xml requires lxml; dict requires pandas, please install via pip if needed")
-    parser.add_argument("-fx", "--fixity", required = False, nargs = '?', const = "SHA-1", default = None, choices = ['MD5', 'SHA-1', 'SHA1', 'SHA-256'], type = fixity_helper,
-                        help = "Set to generate fixities, specify Algorithm to use (default SHA-1)")
     parser.add_argument("-v", "--version", action = 'version', version = '%(prog)s {version}'.format(version = importlib.metadata.version("auto_reference_generator")),
                         help = "See version information, then exit")
-    parser.add_argument("-key","--keywords", nargs = '*', default = None,
-                        help = "Set to replace reference numbers with given Keywords for folders (only Folders atm). Can be a list of keywords or a JSON file mapping folder names to keywords.")
-    parser.add_argument("--keywords-case-sensitivity", required = False, action = 'store_false', default = True,
-                        help = "Set to change case keyword matching sensitivity. By default keyword matching is insensitive")
-    parser.add_argument("-keym","--keywords-mode", nargs = '?', const = "initialise", choices = ['initialise','firstletters','from_json'], default = 'initialise',
-                        help = "Set to alternate keyword mode: 'initialise' will use initials of words; 'firstletters' will use the first letters of the string; 'from_json' will use a JSON file mapping names to keywords")
-    parser.add_argument("--keywords-retain-order", required = False, default = False, action = 'store_true', 
-                        help = "Set when using keywords to continue reference numbering. If not used keywords don't 'count' to reference numbering, e.g. if using initials 'Project Alpha' -> 'PA' then the next folder/file will be '1' not '2'")
-    parser.add_argument("--keywords-abbreviation-number", required = False, nargs='?', default = 3, type = int,
-                        help = "Set to set the number of letters to abbreviate for 'firstletters' mode, does not impact 'initialise' mode.")
-    parser.add_argument("--sort-by", required=False, nargs = '?', default = 'folders_first', choices = ['folders_first','alphabetical'], type=str.lower,
+    parser.add_argument('root', nargs = '?', default = os.getcwd(),
+                        help = "The root directory to create references for")
+    refgroup = parser.add_argument_group('Reference Options','Options for reference generation')
+    refgroup.add_argument("-p", "--prefix", required = False, nargs = '?',
+                        help = "Set a prefix to append onto generated references")
+    refgroup.add_argument("-s", "--suffix", required = False, nargs = '?',
+                        help = "Set a suffix to append onto generated references")
+    refgroup.add_argument("--suffix-option", required = False, choices= ['apply_to_files','apply_to_folders','apply_to_both'], default = 'apply_to_files',
+                        help = "Set whether to apply the suffix to files, folders or both when generating references")
+    refgroup.add_argument("-acc", "--accession", required = False, choices = ['dir', 'file', 'all'], default = None, type = str.lower,
+                        help="Sets the program to create an accession listing - IE a running number of the files.")
+    refgroup.add_argument("-accp", "--acc-prefix", required = False, nargs = '?',
+                        help = "Sets the Prefix for Accession Mode")
+    refgroup.add_argument("-l", "--level-limit", required = False, nargs = '?', type = int,
+                        help = "Set a level limit to generate references to")
+    refgroup.add_argument("-str", "--start-ref", required = False, nargs = '?', default = 1, type = int,
+                        help = "Set the starting reference number. Won't affect sub-folders/files")
+    refgroup.add_argument("-dlm", "--delimiter", required = False, nargs= '?', type = str,
+                        help = "Set the delimiter to use between levels")
+    refgroup.add_argument("--remove-empty", required = False, action = 'store_true',
+                        help = "Sets the Program to remove any Empty Directory and Log removals to a text file")
+    refgroup.add_argument("--disable-empty-export", required = False, action = 'store_false',
+                        help = "Sets the program to not export a log of removed empty directories, by default will export, this flag disables that")
+    refgroup.add_argument("-hid","--hidden", required = False , action = 'store_true', default = False,
+                        help = "Set to include hidden files/folders in the listing")
+    refgroup.add_argument("-fx", "--fixity", required = False, nargs = '?', const = "SHA-1", default = None, choices = ['MD5', 'SHA-1', 'SHA1', 'SHA-256'], type = fixity_helper,
+                        help = "Set to generate fixities, specify Algorithm to use (default SHA-1)")
+    refgroup.add_argument("--sort-by", required=False, nargs = '?', default = 'folders_first', choices = ['folders_first','alphabetical'], type=str.lower,
                         help = "Set the sorting method, 'folders_first' sorts folders first then files alphabetically; 'alphabetically' sorts alphabetically (ignoring folder distinction)")
-    parser.add_argument("--options-file", required = False, nargs = '?', default = os.path.join(os.path.dirname(__file__),'options','options.properties'),
-                        help = "Set the options file to use")
-    parser.add_argument("--log-level", required=False, nargs='?', choices=['DEBUG','INFO','WARNING','ERROR'], default=None, type=str.upper,
+
+
+    outputgroup = parser.add_argument_group('Output Options','Options for outputting the generated references')
+    outputgroup.add_argument("-o", "--output", required = False, nargs = '?',
+                        help = "Set the output directory for the created spreadsheet")
+    outputgroup.add_argument("--disable-meta-dir", required = False, action = 'store_false', default = True,
+                        help = "Set to disable creating a 'meta' file for spreadsheet; can be used in combination with output")
+    outputgroup.add_argument("-skp","--skip", required = False, action = 'store_true', default = False,
+                        help = "Set to skip creating references, will generate a spreadsheet listing")
+    outputgroup.add_argument("-fmt", "--output-format", required = False, default = "xlsx", choices = ['xlsx', 'csv', 'json', 'ods', 'xml', 'dict'],
+                        help = "Set to set output format. Note ods requires odfpy; xml requires lxml; dict requires pandas, please install via pip if needed")
+    outputgroup.add_argument("--options-file", required = False, nargs = '?', default = os.path.join(os.path.dirname(__file__),'options','options.properties'),
+                        help = "Set the options file to use, to override output column headers and other options")
+    outputgroup.add_argument("--log-level", required=False, nargs='?', choices=['DEBUG','INFO','WARNING','ERROR'], default=None, type=str.upper,
                         help="Set the logging level (default: WARNING)")
-    parser.add_argument("--log-file", required=False, nargs='?', default=None,
+    outputgroup.add_argument("--log-file", required=False, nargs='?', default=None,
                         help="Optional path to write logs to a file (default: stdout)")
-    args = parser.parse_args()
-    return args
+    
+    keywordsgroup = parser.add_argument_group('Keyword Options','Options for using keywords in reference generation')
+    keywordsgroup.add_argument("-key","--keywords", nargs = '*', default = None,
+                        help = "Set to replace reference numbers with given Keywords for folders (only Folders atm). Can be a list of keywords or a JSON file mapping folder names to keywords.")
+    keywordsgroup.add_argument("--keywords-case-sensitivity", required = False, action = 'store_false', default = True,
+                        help = "Set to change case keyword matching sensitivity. By default keyword matching is insensitive")
+    keywordsgroup.add_argument("-keym","--keywords-mode", nargs = '?', const = "initialise", choices = ['initialise','firstletters','from_json'], default = 'initialise',
+                        help = "Set to alternate keyword mode: 'initialise' will use initials of words; 'firstletters' will use the first letters of the string; 'from_json' will use a JSON file mapping names to keywords")
+    keywordsgroup.add_argument("--keywords-retain-order", required = False, default = False, action = 'store_true', 
+                        help = "Set when using keywords to continue reference numbering. If not used keywords don't 'count' to reference numbering, e.g. if using initials 'Project Alpha' -> 'PA' then the next folder/file will be '1' not '2'")
+    keywordsgroup.add_argument("--keywords-abbreviation-number", required = False, nargs='?', default = 3, type = int,
+                        help = "Set to set the number of letters to abbreviate for 'firstletters' mode, does not impact 'initialise' mode.")
+    return parser
 
 def run_cli():
-    args = parse_args()
+    parser = create_parser()
+    args = parser.parse_args()
     # Configure logging early so other modules inherit the settings
     try:
         log_level = getattr(logging, args.log_level.upper()) if args.log_level else logging.INFO
@@ -137,7 +143,7 @@ def run_cli():
                             level_limit = args.level_limit,
                             fixity = args.fixity, 
                             empty_flag = args.remove_empty, 
-                            empty_export_flag = args.empty_export, 
+                            empty_export_flag = args.disable_empty_export, 
                             accession_flag = args.accession, 
                             hidden_flag = args.hidden, 
                             start_ref = args.start_ref, 
