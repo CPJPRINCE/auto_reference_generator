@@ -206,11 +206,9 @@ Keyword Modes:
 
 The below covers the full range of options. Use the `-h` option to show this dialog:
 
-```
 <!-- argparse_to_md:auto_reference_generator:create_parser -->
 <!-- argparse_to_md_end -->
         
-```
 
 ## Troubleshooting
 
