@@ -5,3 +5,4 @@ dist/
 .vscode
 auto_reference_generator.egg-info/
 build/
+auto_reference_generator.code-workspace
