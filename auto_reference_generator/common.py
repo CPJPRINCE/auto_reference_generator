@@ -7,7 +7,7 @@ license: Apache License 2.0"
 
 import os, time, sys, stat, json, logging
 import pandas as pd
-from typing import Optional, Union
+from typing import Optional, Union, Literal
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
@@ -35,7 +35,7 @@ def define_output_file(output_path: str, output_name: str, meta_dir_name: str = 
     return output_file
 
 def export_list_txt(txt_list: list, output_filename: str):
-    try: 
+    try:
         with open(output_filename,'w') as writer:
             for line in txt_list:
                 writer.write(f"{line}\n")
@@ -48,7 +48,7 @@ def export_list_txt(txt_list: list, output_filename: str):
 def export_csv(df: pd.DataFrame, output_filename: str, sep: str = ",", index: bool = False):
     try:
         df.to_csv(output_filename,index = index, sep = sep, encoding = "utf-8")
-        logger.info(f"Saved to: {output_filename}")    
+        logger.info(f"Saved to: {output_filename}")
     except ModuleNotFoundError:
         logger.warning('Pandas module not found, cannot export to csv. Please install via: pip install pandas')
     except PermissionError as e:
@@ -56,10 +56,11 @@ def export_csv(df: pd.DataFrame, output_filename: str, sep: str = ",", index: bo
         time.sleep(10)
         export_csv(df, output_filename, sep = sep, index = index)
 
-def export_json(df: pd.DataFrame, output_filename: str, orient: str = 'index'):
+def export_json(df: pd.DataFrame, output_filename: str, orient: Literal['index', 'records', 'split', 'columns', 'values','table', None]
+ = 'index'):
     try:
-        df.to_json(output_filename,orient=orient, indent=4)
-        logger.info(f"Saved to: {output_filename}")    
+        df.to_json(output_filename, orient=orient, indent=4)
+        logger.info(f"Saved to: {output_filename}")
     except ModuleNotFoundError:
         logger.warning('Pandas Module not found, cannot export to json. Please install via: pip install pandas')
         raise SystemExit()
@@ -71,7 +72,7 @@ def export_json(df: pd.DataFrame, output_filename: str, orient: str = 'index'):
 def export_xml(df: pd.DataFrame, output_filename: str, index: bool = False):
     try:
         df.to_xml(output_filename, index = index)
-        logger.info(f"Saved to: {output_filename}")    
+        logger.info(f"Saved to: {output_filename}")
     except ModuleNotFoundError:
         logger.warning('lxml Module not found, cannot export to xml, please install via: pip install lxml')
         raise SystemExit()
@@ -84,7 +85,7 @@ def export_xl(df: pd.DataFrame, output_filename: str, index: bool = False):
     try:
         with pd.ExcelWriter(output_filename,mode = 'w') as writer:
             df.to_excel(writer, index = index)
-        logger.info(f"Saved to: {output_filename}")    
+        logger.info(f"Saved to: {output_filename}")
     except ModuleNotFoundError:
         logger.warning('openpyxl Module not found, cannot export to xlsx, please install via: pip install openpyxl')
         raise SystemExit()
@@ -97,7 +98,7 @@ def export_ods(df: pd.DataFrame, output_filename: str, index: bool = False):
     try:
         with pd.ExcelWriter(output_filename,engine='odf',mode = 'w') as writer:
             df.to_excel(writer, index = index)
-        logger.info(f"Saved to: {output_filename}")    
+        logger.info(f"Saved to: {output_filename}")
     except ModuleNotFoundError:
         logger.warning('odfpy Module not found, cannot export to ods, please install via: pip install odfpy')
         raise
@@ -130,6 +131,8 @@ def win_file_split(path: str):
 
 def filter_win_hidden(path: str):
     try:
+        if sys.platform != "win32":
+            return False
         if bool(os.stat(path).st_file_attributes & stat.FILE_ATTRIBUTE_HIDDEN) is True:
             return True
         else:
@@ -182,23 +185,23 @@ def keyword_replace(keywords_list: Union[list, str], file_path: str, original_re
         logger.error(f"Invalid keyword mode chosen {keywords_mode}, choose from ['firstletters','initialise','from_json']")
         raise ValueError(f"Invalid keyword mode chosen {keywords_mode}, choose from ['firstletters','initialise','from_json']")
 
-def suffix_addition(file_path: str, ref: str, suffix: str, suffix_options: str = 'apply_to_files') -> str:
-    if suffix_options == 'apply_to_files' and os.path.isfile(file_path):
+def suffix_addition(file_path: str, ref: str, suffix: str, suffix_options: Optional[str] = 'file') -> str:
+    if suffix_options == 'file' and os.path.isfile(file_path):
         ref = str(ref) + str(suffix)
-    elif suffix_options == 'apply_to_folders' and os.path.isdir(file_path):
+    elif suffix_options == 'dir' and os.path.isdir(file_path):
         ref = str(ref) + str(suffix)
-    elif suffix_options == 'apply_to_both':
+    elif suffix_options == 'both':
         ref = str(ref) + str(suffix)
     else:
         pass
     return ref
 
-def suffix_subtraction(file_path: str, ref: str, suffix: str, suffix_options: str = 'apply_to_files') -> str:
-    if suffix_options == 'apply_to_files' and os.path.isfile(file_path):
+def suffix_subtraction(file_path: str, ref: str, suffix: str, suffix_options: Optional[str] = 'file') -> str:
+    if suffix_options == 'file' and os.path.isfile(file_path):
         ref = str(ref).replace(str(suffix), "")
-    elif suffix_options == 'apply_to_folders' and os.path.isdir(file_path):
+    elif suffix_options == 'dir' and os.path.isdir(file_path):
         ref = str(ref).replace(str(suffix), "")
-    elif suffix_options == 'apply_to_both':
+    elif suffix_options == 'both':
         ref = str(ref).replace(str(suffix), "")
     else:
         pass
