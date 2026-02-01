@@ -330,10 +330,7 @@ The output will be to an additional `Accession_Reference` column
 ## Full Options:
 
 The below covers the full range of options. Use the `-h` option to show this dialog:
-<details>
-<summary>
-Full Options:
-</summary>
+
 <!-- argparse_to_md:auto_reference_generator:create_parser -->
 Usage:
 ```
@@ -398,7 +395,6 @@ Keyword Options:
 - `--keywords-retain-order`: Set when using keywords to continue reference numbering. If not used keywords don't 'count' to reference numbering, e.g. if using initials 'Project Alpha' -> 'PA' then the next folder/file will be '1' not '2'
 - `--keywords-abbreviation-number [KEYWORDS_ABBREVIATION_NUMBER]`: Set to set the number of letters to abbreviate for 'firstletters' mode, does not impact 'initialise' mode.
 <!-- argparse_to_md_end -->
-</details>
 
 ## Troubleshooting
 

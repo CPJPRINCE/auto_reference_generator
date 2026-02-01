@@ -18,7 +18,7 @@ def test_keyword_replace_initialise_and_firstletters(tmp_path):
     # Create a temporary directory with the test name
     test_dir = tmp_path / "John Smith"
     test_dir.mkdir()
-    
+
     text = "John Smith"
     # Test initialise mode with keyword matching
     assert keyword_replace([text], str(test_dir), "REF", keywords_mode="initialise") == "JS"
