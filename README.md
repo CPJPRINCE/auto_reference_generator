@@ -1,274 +1,429 @@
-# Auto Reference Generator Tool
+# Auto Reference Generator
 
-The Auto Reference Generator tool is small python programme to help Digital archivists reference and catalogue Digital Items. It recursively acts through a given directory to create generating reference codes for each directory and file, then exporting the results to an Excel or CSV spreadsheet.
+A small python programme to generate hierarchical archival reference for files and directories and export the results to a spreadsheet.
 
-It's platform independent tested functioning on Windows, MacOS and Linux. 
+[![Supported Versions](https://img.shields.io/pypi/pyversions/auto_reference_generator.svg)](https://pypi.org/project/auto_reference_generator)
+[![CodeQL](https://github.com/CPJPRINCE/auto_reference_generator/actions/workflows/codeql.yml/badge.svg)](https://github.com/CPJPRINCE/auto_reference_generator/actions/workflows/codeql.yml)
+
+## Table of Contents
+- [Quick Start](#quick-start)
+  - [Option 1: Using pip (Recommended for Python users / long-term usage)](#option-1-using-pip-recommended-for-python-users--long-term-usage)
+  - [Option 2: Using Portable Executable (No Python Required)](#option-2-using-portable-executable-no-python-required)
+  - [Output](#output)
+- [Version & Package info](#version--package-info)
+- [Why use this tool?](#why-use-this-tool)
+- [Additional Features:](#additional-features)
+- [Basic Usage / Examples](#basic-usage--examples)
+- [Expected Spreadsheet](#expected-spreadsheet)
+- [Structure of References](#structure-of-references)
+- [Advanced Options](#advanced-options)
+  - [Clear Empty Directories](#clear-empty-directories)
+  - [Hash/Fixity Generation](#hashfixity-generation)
+  - [Level Limit](#level-limit)
+  - [Skip](#skip)
+  - [Keywords](#keywords)
+  - [Options File](#options-file)
+  - [Accession mode](#accession-mode)
+- [Full Options:](#full-options)
+- [Troubleshooting](#troubleshooting)
+- [Future Developments](#future-developments)
+- [Contributing](#contributing)
+- [Developers](#developers)
+
+
+## Quick Start
+
+### Option 1: Using pip (Recommended for Python users / long-term usage)
+```bash
+pip install -U auto_reference_generator
+auto_ref /path/to/root -p PREFIX -o /path/to/output
+```
+
+### Option 2: Using Portable Executable (No Python Required)
+Download the latest portable executable for your platform from [Releases](https://github.com/CPJPRINCE/auto_reference_generator/releases)
+
+Extract and run:
+```bash
+# Windows
+cd auto_ref\bin
+.\auto_ref.cmd .\path\to\root -p PREFIX -o .\path\to\output
+
+# Linux/macOS
+./auto_ref /path/to/root -p PREFIX -o /path/to/output
+```
+On Windows you can also use the install.cmd with admin privileges to install and run the command without navigating to the .cmd directory (see Option 1 for use)
+
+### Output
+Generates a `meta` folder with output `root_AutoRef.xlsx` and a list of the generated reference hierarchy, alongside some metadata.
+
+## Version & Package info
+
+Python Version:
+Python Version 3.10+ is recommended. Earlier versions may work but are not tested.
+
+Additional Packages:
+- pandas (required)
+- openpyxl (required)
+- pyodf (optional - ods export)
+- lxml (optional - xml export)
+- tqdm (required)
+
+To install using Python:
+
+```bash
+pip install pandas openpyxl pyodf lxml tqdm
+```
+
+If using Python ensure it is added to Environment.
 
 ## Why use this tool?
 
-If you're an archivist dealing with Digital Records, this provides a means of undertaking a referencing of a large amount of digital records at a time, saving a significant amount of time in assigning reference codes to individual records.
+This tool is designed for archivists cataloguing large amounts of Digital Records at a time.
 
-The generated spreadsheet also serves as the basis for spreadsheet inputs for the Opex Manifest Generator tool [*\*Shameless Self promotion\**.](https://github.com/CPJPRINCE/opex_manifest_generator/)
+Automated Generation of References saves time and effort compared to manually filling in vs.
 
-## A Quick Note
+Additional options expand upon this and allow insertion into existing hierarchies and reference systems.
 
-If you need to conduct an arrangement of the files; this must be done beforehand for the references to be accurate; though a temporary spreadsheet can be generated to provide assistance in this.
+## Additional Features:
 
-## Additional features:
+- **Prefixes - allowing merging into existing hierarchies**
+- **Suffixes**
+- **Level identification and limiting**
+- **Keyword assignment - replacing Numericals with specified keywords (initials, first letter, JSON map)**
+- **Logged removal of empty directories**
+- **Accession / Running Number mode**
+- **Fixity Generation**
+- **Export options include: xslx (Default), csv, ods, json or xml.**
+- **Integration with Opex Manifest Generator [*\*Shameless Self promotion\**.](https://github.com/CPJPRINCE/opex_manifest_generator/)**
 
-Some additional features include.
+## Basic Usage / Examples
 
-- Append prefixes to the Archival Reference.
-- Identifying the depth / level of each folder.
-- Gathering standard set of Metadata.
-- Changeable starting reference.
-- Logged removal of empty directories.
-- An alternative "Accession Reference" mode.
-- Compatibility with Win32 / Window's 256 Character limit.
+- Basic: `auto_ref /path/to/root`
+- Prefix: `auto_ref /path/to/root -p PREFIX`
+- Suffix: `auto_ref /path/to/root -s SUFFIX`
+- Delimiter: `auto_ref /path/to/root -dlm "-"`
+- Accession: `auto_ref /path/to/root -acc file`
+- Fixity: `auto_ref /path/to/root -fx MD5`
+- Format: `auto_ref /path/to/root -fmt csv`
+- Remove Empty `auto_ref /path/to/root --remove-empty`
+- Output: `auto_ref /path/to/root -o /path/to/output`
+- Include Hidden: `auto_ref /path/to/root --hidden`
 
-## Structure of References
-```
-Folder                  Reference
--->Root                 0
----->Folder 1           1
------->Sub Folder 1     1/1
--------->File 1         1/1/1
--------->File 2         1/1/2
------->Sub Folder 2     1/2
--------->File 3         1/2/1
--------->File 4         1/2/2
----->Folder 2           2
------->Sub Folder 3     2/1
------->File 5           2/2
----->File 6             3
-```
-The root reference defaults to 0, however this the Prefix option can be utilized to change 0 to the desired prefix / archival reference, changing the structure to:
+These options can be combined in a number of combinations.
 
-```
--->Root Folder          ARC
----->Folder             ARC/1
------->Sub Folder       ARC/1/1
------->File             ARC/1/2
-etc
-```
+## Expected Spreadsheet
 
-## Prerequisites
-
-The following modules are utilized and installed with the package:
-
-- pandas
-- openpyxl
-
-Optional Modules also include:
-- lxml (for XML Export)
-- odfpy (for ODS Export)
-
-Python Version 3.8+ is also recommended. It may work on earlier versions, but this has not been tested.
-
-## Installation
-
-To install, simply run:
-
-`pip install -U auto_Reference_generator`
-
-## Usage
-
-To run the basic program, run from the terminal:
-
-`auto_ref {path/to/your/folder}`
-
-Replacing the path with your folder. If a space is in the path enclose in quotations. On Windows this may look like:
-
-`auto_ref "C:\Users\Christopher\Downloads\"`
-
-Additional options can be appended before or after the root directory.
-
-To run the program with the Prefix option, add the `-p` option and type in your prefix:
-
-`auto_ref "C:\Users\Christopher\Downloads\" -p "ARCH"`
-
-This will generate a spreadsheet in a folder called 'meta' within the 'root' directory.
-
-![MetaFolder](assets/metaFolder.png)
-
-The spreadsheet will be named after the 'root' folder and appended with "_Autoref".
-
-![FolderSpread](assets/SpreadGen.png)
-
-Within the spreadsheet you will have information on the paths of the files as well as some additional metadata: size, extensions and dates. 
+The spreadsheet should output like so:
 
 ![SpreadPreview](assets/SpreadPreview.png)
 
-At the end of the spreadsheet an `Archive_Reference` column with the generated reference. 
+This includes a preset of metadata:
+Including: FullName, RelativeName, BaseName, Size, Modified, Ref_Section Level, Parent, Archive_Reference,
+
+The reference will by default be generated to the `Archive_Reference` column:
 
 ![ReferencePreview](assets/ReferencesPreview.png)
 
-(If ran without Prefix Option this will simply be the numerals)
-
-## Accession mode
-
-There is an alternative method of generating a reference number; having create a code based on the directory hierarchy you can simply create one that follows an 'accession number' pattern. IE each file or folder regardless of depth will be given a running number; depending on the 'mode' the running number will only apply to Directories, Files or Both!
-
+## Structure of References
 
 ```
-Example running Accession in "File" Mode
+# Usage with Prefix `ARC`
+auto_ref /path/to/root -p ARC
 
-----> Root              ACC-Dir
-------> Folder 1        ACC-Dir
---------> File 1        ACC-1
---------> File 2        ACC-2
-------> File 3          ACC-3
-------> Folder 2        ACC-Dir
---------> Sub-Folder    ACC-Dir
-----------> File 4      ACC-4
+Folder                 Reference
+>Root                  ARC
+--->Folder 1           ARC/1
+------>Sub Folder 1    ARC/1/1
+--------->File 1       ARC/1/1/1
+--------->File 2       ARC/1/1/2
+------>Sub Folder 2    ARC/1/2
+--------->File 3       ARC/1/2/1
+--------->File 4       ARC/1/2/2
+--->Folder 2           ARC/2
+------>Sub Folder 3    ARC/2/1
+--------->File 5       ARC/2/2
+--->File 6             ARC/3
+...
+
+# Files and Folders can coexist at the same level. Without a prefix the root reference defaults to 0:
+auto_ref /path/to/root
+
+>Root                  0
+--->Folder             1
+------>Sub Folder      1/1
+--------->File         1/1/1
+--------->File2        1/1/2
+------>File3           1/2
+...
+
+# Prefixes can also be set to integrate the folder into the existing hierarchy at any point.
+auto_ref /path/to/root -p "ARC/1/2/3"
+
+>Root                   ARC/1/2/3
+--->Folder              ARC/1/2/3/1
+------>File             ARC/1/2/3/1/1
+------>File2            ARC/1/2/3/1/2
+...
+
+# Start Ref option will also set the starting number for first subfolder.
+auto_ref /path/to/root -p "ARC/1/2/3" -s 5
+
+>Root                   ARC/1/2/3
+--->Folder              ARC/1/2/3/5
+------>File             ARC/1/2/3/5/1
+...
+
+```
+## Advanced Options
+
+**Important notes**
+
+- The term `meta` is hard coded to always be ignored for folders.
+- A meta folder will always be generated unless using `--disable-meta-dir` option.
+- **Both relative and absolute paths will work**
+
+### Clear Empty Directories
+
+```bash
+# Will remove empty directories and generate a plain text log to the 'meta folder'. This is to prevent misleading references to nothing.
+auto_ref /path/to/root --remove-empty
 ```
 
-The available modes are `File, Dir, All`
+### Hash/Fixity Generation
 
-To run in accession mode, use the `-acc` and `-accp` options (A prefix must be set):
+```bash
+# Will generate a SHA-1 fixity list alongside reference, in columns Hash and Algorithm
+auto_ref /path/to/root -fx SHA-1
 
-`auto_ref "C:\Users\Christopher\Downloads\" -acc File -accp "ACC"`
-
-![AccessionPReview](assets/AccessionPreview.png)
-
-When you generate an Accession Reference an Archive_Reference code will always also be generated.
-
-## Set start reference
-
-To set a start reference simply add `-str` followed by (Note this must be numeral)
-
-## Clear Empty Directories
-
-Adding `--empty` or `-rm` to the will automatically remove any empty directories within the files. It will also generate a simple text log in the meta folder of the empty directories that were removed.
-
-## Fixity
-
-You can also generate Fixities by simply adding the `-fx` option. This will default to using the SHA-1 algorithm, only MD5, SHA-1, SHA-256 and SHA-512 are supported. 
+# MD5, SHA-1, SHA-256, SHA-512 supported.
+```
 
 ![HashPreview](assets/HashPreview.png)
 
-To run a SHA-512 generation:
+### Level Limit
 
-`auto_ref "C:\Users\Christopher\Downloads\" -fx SHA-512`
-
-## Filtering
-
-By default hidden folders and folders named 'meta' will be ignored. You can include hidden folders by using the option `--hidden`
-
-## Skip
-
-If you just want to generate a spreadsheet without a reference code you can add `-skp | --skip`, and it will simply generate a spreadsheet without the Archive_Reference
-
-## Options:
-
-For up to date options use the `-h` option to show dialog:
-
+```bash
+# Sets a level-depth to stop generating referencing at. Example will stop generating 5 levels down from root.
+auto_ref /path/to/root -l 5
 ```
-Options:
-        -h,     --help          Show Help dialog                              
 
-        -p,     --prefix        Replace Root 0 with specified prefix            [string]
-                                Is added to all references
+### Skip
 
-        -s      --suffix        Add a suffix to references                      [string]
-
-        --suffix-options        Set whether to apply to files,                  {apply_to_files,apply_to_folders,
-                                folders,or to all                               apply_to_all}
-                                default is to apply_to_files.
-        
-        -l      --level-limit   Set whether to limit generation to              [int]
-                                a specific level.
-                                Note generated references may have
-                                extra delimiter.
-
-        -dlm    --delimiter     Set to change the default delimiter             [string]
-
-        -acc,   --accession     Run in "Accession Mode", this will              {Dir,File,
-                                generate a running number of either             All}
-                                Files, directories, or Both                                                           
-                                
-        -accp,  --acc-prefix    Set the Prefix to append onto the running       [boolean]
-                                number generated in "Accession Mode"
-        
-        -fx     --fixity        Generate fixity codes for files                 {MD5, SHA-1, 
-                                                                                SHA-256, SHA-512}
-        
-        -hid    --hidden        Include Hidden directories and files in         [boolean]
-                                generation.
-
-        --rm-empty              Will remove all Empty Directories from          [boolean]
-                                within a given folder, not including them
-                                in the Reference Generation.
-                                A simply Text list of removed folders is 
-                                then generated to the output directory.
-        
-        -str,     --start-ref   Set the number to start the Reference           [int] 
-                                generation from.
-        
-        -o,     --output        Set the directory to export the spreadsheet to. [string]      
-        
-        --disable-meta-dir      Set whether to generate a "meta" directory,     [boolean]
-                                to export CSV / Excel file to.
-                                Default behavior will be to create a directory,
-                                using this option will disable it.      
-        
-        -skp    --skip          Skip running the Auto Reference process,   [boolean]
-                                will generate a spreadsheet but not
-                                an Archival Reference
-        
-        -fmt,   --format        Set export format. Will require                 {xlsx,csv,ods,dict,xml,json}
-                                appropriate modules in Python.
-                                ods - PyODF
-                                xlsx - OpenPyXL
-                                xml - lxml     
-                                Defaults to xlsx.
-        
-        -key    --keywords      Set keywords to replace numericals with         [string|path]
-                                alphanumerical characters
-                                Can be single word or
-                                list: 'written,like,this'
-                                Or path to a JSON file containing a dict
-
-                                Keywords only currently act upon folders
-                                and not files.
-        
-        -keym   -keywords-mode  Set way to replace:                             {initialise,first_letters,from_json}
-                                initialise: My New Folder > MNF
-                                first_letters: My New Folder > MYF
-                                from_json: Imports
-                                Requires to have a Json file with a
-                                dictionary of words to replace:
-                                {'Word':'Replacement',
-                                'SecondWord':'2ndReplacement}
-        
-        --keywords-retain-      Set whether to continue reference numbering     [bool]
-        order                   If not used keywords don't 'count' towards
-                                additional references. 
-                                IE if the keyword you are replacing is 
-                                be reference number: 2, this is moved
-                                to what would originally be number 3.
-                                Retaining the order means, this scheme is 
-                                maintained: IE 3 is still 3, and 2 is skipped
-
-        --keywords-case-        Set to enable case-sensitivity for keyword    [bool]
-        sensitivity           matches. Default is cases are not sensitive.
-
-        --keywords-abbreviation Set the number of characters to abbreviate to   [int]
-        -number                 Only for first_letters mode.
-
-        --sort-by               Set the sorting method: folders_first, sorts    [folders_first|alphabetically]
-                                folders first. Alphabetically, you can guess.
-                                Ignores folders.
-                
-                                
-        
+```bash
+# Will skip reference generation if you just want a listing of files
+auto_ref /path/to/root --skip
 ```
+
+### Keywords
+
+Keywords replace the numerical reference with a keyword that matches folder name.
+```bash
+# Replaces keywords "Department of Justice" & "Department of Finance" with intials of words IE DOJ, DOF.
+auto_ref /path/to/root -key "Department of Justice" "Department of Finance"
+
+# The keywords will replace the reference number to all matches of the keyword. The way the replacement is made is determined by the `-keym / --keyword-mode`.
+```
+
+Keyword Modes:
+
+```bash
+# intialise
+# Uses the intials of the keywords in this example Department of Justice becomes DOJ. Singular words will use firstletters mode. Is the default mode.
+auto_ref -key "Department of Justice" -keym initialise
+
+# firstletters
+# Use the first x letters of word. IE `Department of Justices` becomes `DEP`.
+auto_ref -key "Department of Justice" -keym firstletters
+
+# from_json
+# Uses a Python Dictionary stored as a JSON file to set custom abbreviations.
+auto_ref -key /path/to/keyword.json -keym from_json
+
+# JSON formatted like:
+{'keyword to replace':'value to replace with', 'keyword2':'value2'}
+```
+
+Additional Keyword Options:
+
+```bash
+--keywords-case-sensitivity # Sets make lookup case sensitive. Default is insensitive.
+--keywords-abbreviation-number # Sets the number of letters to abbreviate firstletters mode to. Default is 3.
+--keywords-retain-order # Sets whether reference generation will count replacements in its ordering.
+                        # By default it will not count replacements.
+                        # If a keyword replacement is made after reference number 1, the next reference number after the replacement will be: 2
+                        # If this option is used the number will instead be 3.
+```
+
+### Options File
+
+```bash
+# Set a custom options file to customise default headers and some program defaults
+auto_ref /path/to/root --options-file /path/to/options.properties
+```
+
+Default Options are:
+```
+[options]
+
+INDEX_FIELD = FullName # Sets name to run indexing from
+
+PATH_FIELD = FullName
+RELATIVE_FIELD = RelativeName
+PARENT_FIELD = Parent
+PARENT_REF = Parent_Ref
+REFERENCE_FIELD = Archive_Reference
+REF_SECTION = Ref_Section
+ACCESSION_FIELD = Accession_Reference
+LEVEL_FIELD = Level
+BASENAME_FIELD = BaseName
+EXTENSION_FIELD = Extension
+ATTRIBUTE_FIELD = Attributes
+SIZE_FIELD = Size
+CREATEDATE_FIELD = Create_Date
+MODDATE_FIELD = Modified_Date
+ACCESSDATE_FIELD = Access_Date
+
+ALGORITHM_FIELD = Algorithm
+HASH_FIELD = Hash
+
+ACCDELIMTER = -
+ACCFILE_KEYWORD = File
+ACCDIR_KEYWORD = Dir
+METAFOLDER = meta
+OUTPUTSUFFIX = _AutoRef
+EMPTYSUFFIX = _EmptyDirsRemoved
+```
+
+### Accession mode
+
+An alternative method of code generation is based on an accession number / running number pattern. Each file or folder will be given a running number regardless of depth.
+
+Example output running Accession in "file" Mode:
+```
+>Root                 ACC-Dir
+---> Folder 1          ACC-Dir
+------> File 1         ACC-1
+------> File 2         ACC-2
+---> File 3            ACC-3
+---> Folder 2          ACC-Dir
+------> Sub-Folder     ACC-Dir
+---------> File 4      ACC-4
+```
+
+Examples:
+
+```bash
+# Run acc generation for files with Prefix "ACC" - numbers files
+auto_ref /path/to/root -acc file -accp "ACC"`
+
+# Run Accession generation for directories - numbers directories
+auto_ref /path/to/root -acc dir -accp "ACC"`
+
+# Run Accession generation for both - numbers both
+auto_ref /path/to/root -acc both -accp "ACC"`
+```
+
+The output will be to an additional `Accession_Reference` column
+
+![AccessionPReview](assets/AccessionPreview.png)
+
+## Full Options:
+
+The below covers the full range of options. Use the `-h` option to show this dialog:
+
+<!-- argparse_to_md:auto_reference_generator:create_parser -->
+Usage:
+```
+Auto_Reference_Generator [-h] [-v] [-p [PREFIX]] [-s [SUFFIX]]
+                                    [--suffix-option {file,dir,both}] [-acc {file,dir,both}]
+                                    [-accp [ACC_PREFIX]] [-l [LEVEL_LIMIT]] [-str [START_REF]]
+                                    [-dlm [DELIMITER]] [--remove-empty] [--disable-empty-export]
+                                    [-hid] [-fx [{MD5,SHA-1,SHA1,SHA-256}]]
+                                    [--sort-by [{folders_first,alphabetical}]] [-o [OUTPUT]]
+                                    [--disable-meta-dir] [-skp] [-fmt {xlsx,csv,json,ods,xml,dict}]
+                                    [--options-file [OPTIONS_FILE]]
+                                    [--log-level [{DEBUG,INFO,WARNING,ERROR}]]
+                                    [--log-file [LOG_FILE]] [-key [KEYWORDS ...]]
+                                    [--keywords-case-sensitivity]
+                                    [-keym [{initialise,firstletters,from_json}]]
+                                    [--keywords-retain-order]
+                                    [--keywords-abbreviation-number [KEYWORDS_ABBREVIATION_NUMBER]]
+                                    [--physical-mode-input [PHYSICAL_MODE_INPUT]]
+                                    [--spreadsheet-to-sort [SPREADSHEET_TO_SORT]]
+                                    [root]
+```
+Auto Reference Generator for Digital Cataloguing
+
+Positional arguments:
+- `root`: The root directory to create references for
+
+Optional arguments:
+- `-v`, `--version`: See version information, then exit
+
+Reference Options:
+  Options for reference generation
+
+- `-p [PREFIX]`, `--prefix [PREFIX]`: Set a prefix to append onto generated references
+- `-s [SUFFIX]`, `--suffix [SUFFIX]`: Set a suffix to append onto generated references
+- `--suffix-option {file`, `dir`, `both}`: Set whether to apply the suffix to files, folders or both when generating references
+- `-acc {file`, `dir`, `both}`, `--accession {file`, `dir`, `both}`: Sets the program to create an accession listing - IE a running number of the files.
+- `-accp [ACC_PREFIX]`, `--acc-prefix [ACC_PREFIX]`: Sets the Prefix for Accession Mode
+- `-l [LEVEL_LIMIT]`, `--level-limit [LEVEL_LIMIT]`: Set a level limit to generate references to
+- `-str [START_REF]`, `--start-ref [START_REF]`: Set the starting reference number. Won't affect sub-folders/files
+- `-dlm [DELIMITER]`, `--delimiter [DELIMITER]`: Set the delimiter to use between levels
+- `--remove-empty`: Sets the Program to remove any Empty Directory and Log removals to a text file
+- `--disable-empty-export`: Sets the program to not export a log of removed empty directories, by default will export, this flag disables that
+- `-hid`, `--hidden`: Set to include hidden files/folders in the listing
+- `-fx [{MD5`, `SHA-1`, `SHA1`, `SHA-256}]`, `--fixity [{MD5`, `SHA-1`, `SHA1`, `SHA-256}]`: Set to generate fixities, specify Algorithm to use (default SHA-1)
+- `--sort-by [{folders_first`, `alphabetical}]`: Set the sorting method, 'folders_first' sorts folders first then files alphabetically; 'alphabetically' sorts alphabetically (ignoring folder distinction)
+
+Output Options:
+  Options for outputting the generated references
+
+- `-o [OUTPUT]`, `--output [OUTPUT]`: Set the output directory for the created spreadsheet
+- `--disable-meta-dir`: Set to disable creating a 'meta' file for spreadsheet; can be used in combination with output
+- `-skp`, `--skip`: Set to skip creating references, will generate a spreadsheet listing
+- `-fmt {xlsx`, `csv`, `json`, `ods`, `xml`, `dict}`, `--output-format {xlsx`, `csv`, `json`, `ods`, `xml`, `dict}`: Set to set output format. ***Note ods requires odfpy; xml requires lxml; dict requires pandas, please install as needed***
+- `--options-file [OPTIONS_FILE]`: Set the options file to use, to override output column headers and other options
+- `--log-level [{DEBUG`, `INFO`, `WARNING`, `ERROR}]`: Set the logging level (default: WARNING)
+- `--log-file [LOG_FILE]`: Optional path to write logs to a file (default: stdout)
+
+Keyword Options:
+  Options for using keywords in reference generation
+
+- `-key [KEYWORDS ...]`, `--keywords [KEYWORDS ...]`: Set to replace reference numbers with given Keywords for folders (only Folders atm). Can be a list of keywords or a JSON file mapping folder names to keywords.
+- `--keywords-case-sensitivity`: Set to change case keyword matching sensitivity. By default keyword matching is insensitive
+- `-keym [{initialise`, `firstletters`, `from_json}]`, `--keywords-mode [{initialise`, `firstletters`, `from_json}]`: Set to alternate keyword mode: 'initialise' will use initials of words; 'firstletters' will use the first letters of the string; 'from_json' will use a JSON file mapping names to keywords
+- `--keywords-retain-order`: Set when using keywords to continue reference numbering. If not used keywords don't 'count' to reference numbering, e.g. if using initials 'Project Alpha' -> 'PA' then the next folder/file will be '1' not '2'
+- `--keywords-abbreviation-number [KEYWORDS_ABBREVIATION_NUMBER]`: Set to set the number of letters to abbreviate for 'firstletters' mode, does not impact 'initialise' mode.
+
+Physical Mode Options:
+  Options for using physical mode functionality
+
+- `--physical-mode-input [PHYSICAL_MODE_INPUT]`: Set to conduct an Auto Generation of a Specify a path to a Spreadsheet
+- `--spreadsheet-to-sort [SPREADSHEET_TO_SORT]`: Set to a path to a Spreadsheet containing an 'Archive_Reference' Column to sort the spreadsheet according to hierarchy
+<!-- argparse_to_md_end -->
+
+## Troubleshooting
+
+- On Windows ensure that when you enter the root folder it does not end in a `\`. This is slightly annoying as it adds it by default when tabbing.
+- In the examples above I've used linux paths. If you're on Windows don't forget to change these to backslashes `\`
 
 ## Future Developments
 
 - ~~Level Limitations to allow for "group references"~~ - Added!
-- ~~Generating reference's which use alphabetic characters~~ - Added!
+- ~~Generating references which use alphabetic characters~~ - Added!
+- A mode for Physical Cataloguing...
 
 ## Contributing
 
-I welcome further contributions and feedback.
+I welcome further contributions and feedback. If there any issues please raise them [here](https://github.com/CPJPRINCE/auto_reference_generator/issues).
+
+## Developers
+
+The program can be used as a python module like so.
+```python
+from auto_reference_generator import ReferenceGenerator
+
+rg = ReferenceGenerator ("/path/to/root", prefix = "ARC", output_path = "/path/to/output")
+```

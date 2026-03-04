@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "auto_reference_generator"
-version = "1.3.4"
+version = "1.3.7"
 authors = [
     {name="Christopher Prince", email="c.pj.prince@gmail.com"}
     ]
@@ -19,18 +19,24 @@ classifiers = [
     "Operating System :: OS Independent",
     "Topic :: System :: Archiving"
     ]
-dependencies=["pandas","openpyxl"]
+dependencies=["pandas","openpyxl", "tqdm"]
 
 [project.optional-dependencies]
 addex = ["lxml","odfpy"]
+dev = ["pytest>=7.0"]
 
 [project.urls]
 Homepage = "https://github.com/CPJPRINCE/auto_reference_generator"
 Issues = "https://github.com/CPJPRINCE/auto_reference_generator/issues"
 [project.scripts]
-auto_ref = "auto_reference_generator.cli:run_cli"
+auto_ref = "auto_reference_generator.cli:main"
 
 [tool.setuptools.packages.find]
 where = ['.']
 include = ['auto_reference_generator']
 exclude = []
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["tests"]
+python_files = ["test_*.py"]

@@ -1,0 +1,245 @@
+name: Build Portable Executables with Nuitka
+
+on:
+  push:
+    tags:
+      - 'v*'
+      - 'test-*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    name: Build Windows Portable
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          choco install llvm -y
+          python -m pip install --upgrade pip
+          pip install nuitka ordered-set zstandard odfpy lxml
+          pip install -e .
+
+      - name: Build Windows executable with Nuitka
+        env:
+          NUITKA_CACHE_DIR: ${{ runner.temp }}/nuitka_cache
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $version = [regex]::Match($tag, '\d+\.\d+\.\d+').Value
+          if ($version -eq "") { $version = "1.0.0" }
+          python -m nuitka `
+            --onefile `
+            --follow-imports `
+            --windows-console-mode=force `
+            -o auto_ref `
+            --output-dir=build `
+            --nofollow-import-to=pandas.tests `
+            --nofollow-import-to=pandas.conftest `
+            --include-package=odf `
+            --include-package=lxml `
+            --include-package=pandas `
+            --include-package=auto_reference_generator `
+            --include-data-dir=auto_reference_generator/options=options `
+            --company-name="Auto Reference Generator" `
+            --product-name="Auto Reference Generator" `
+            --file-version="$version" `
+            --product-version="$version" `
+            --copyright="Copyright $(Get-Date -Format yyyy)" `
+            --assume-yes-for-downloads `
+            --quiet `
+            --clang `
+            auto_reference_generator/cli.py
+
+
+      - name: Create Windows package
+        run: |
+          $version = "${{ github.ref_name }}" -replace "^v", ""
+          if ($version -eq "") { $version = "1.0.0" }
+
+          # Create folder structure
+          New-Item -ItemType Directory -Force -Path "auto_ref/bin" | Out-Null
+
+          # Copy executable and wrapper
+          Copy-Item -Path "build/auto_ref.exe" -Destination "auto_ref/bin/"
+          Copy-Item -Path "installer/auto_ref.cmd" -Destination "auto_ref/bin/"
+
+          # Copy documentation and scripts
+          Copy-Item -Path "installer/README.txt" -Destination "auto_ref/"
+          Copy-Item -Path "installer/install.cmd" -Destination "auto_ref/"
+          Copy-Item -Path "installer/uninstall.cmd" -Destination "auto_ref/"
+          Copy-Item -Path "LICENSE.md" -Destination "auto_ref/" -ErrorAction SilentlyContinue
+
+          # Create portable ZIP
+          Compress-Archive -Path "auto_ref" -DestinationPath "auto_ref_windows_$version.zip"
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: auto_ref-windows
+          path: auto_ref_windows_*.zip
+
+      - name: Upload to release
+        uses: softprops/action-gh-release@v1
+        with:
+          draft: true
+          files: auto_ref_windows_*.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-linux:
+    name: Build Linux Portable
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y patchelf clang
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install nuitka ordered-set zstandard odfpy lxml
+          pip install -e .
+
+      - name: Build Linux executable with Nuitka
+        run: |
+          python -m nuitka \
+            --onefile \
+            --follow-imports \
+            -o auto_ref \
+            --output-dir=build \
+            --nofollow-import-to=pandas.tests \
+            --nofollow-import-to=pandas.conftest \
+            --include-package=odf \
+            --include-package=lxml \
+            --include-package=pandas \
+            --include-package=auto_reference_generator \
+            --include-data-dir=auto_reference_generator/options=options \
+            --assume-yes-for-downloads \
+            --quiet \
+            --clang \
+            auto_reference_generator/cli.py
+
+      - name: Create Linux artifact archive
+        run: |
+          version="${{ github.ref_name }}"
+          version="${version#v}"
+          version="${version#test-}"
+          if [ -z "$version" ] || [ "$version" = "master" ]; then
+            version="1.0.0"
+          fi
+          tar -czf "auto_ref_linux_${version}.tar.gz" -C build auto_ref
+
+      - name: Upload Linux artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: auto_ref-linux
+          path: auto_ref_linux_*.tar.gz
+
+      - name: Upload to release
+        uses: softprops/action-gh-release@v1
+        with:
+          draft: true
+          files: auto_ref_linux_*.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-macos:
+    name: Build macOS Portable
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install nuitka ordered-set zstandard odfpy lxml
+          pip install -e .
+
+      - name: Build macOS executable with Nuitka
+        run: |
+          python -m nuitka \
+            --onefile \
+            --follow-imports \
+            -o auto_ref \
+            --nofollow-import-to=pandas.tests \
+            --nofollow-import-to=pandas.conftest \
+            --output-dir=build \
+            --include-package=odf \
+            --include-package=lxml \
+            --include-package=pandas \
+            --include-package=auto_reference_generator \
+            --include-data-dir=auto_reference_generator/options=options \
+            --macos-create-app-bundle \
+            --assume-yes-for-downloads \
+            --quiet \
+            --clang \
+            auto_reference_generator/cli.py
+
+      - name: Create macOS artifact archive
+        run: |
+          version="${{ github.ref_name }}"
+          version="${version#v}"
+          version="${version#test-}"
+          if [ -z "$version" ] || [ "$version" = "master" ]; then
+            version="1.0.0"
+          fi
+          tar -czf "auto_ref_macos_${version}.tar.gz" -C build auto_ref
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: auto_ref-macos
+          path: auto_ref_macos_*.tar.gz
+
+      - name: Upload to release
+        uses: softprops/action-gh-release@v1
+        with:
+          draft: true
+          files: auto_ref_macos_*.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  create-release-notes:
+    name: Create Release Notes
+    runs-on: ubuntu-latest
+    needs: [build-windows, build-linux, build-macos]
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate Release Notes
+        run: |
+          echo "## Portable Executables" > release_notes.md
+          echo "" >> release_notes.md
+          echo "### Downloads" >> release_notes.md
+          echo "- **Windows**: \`auto_ref_windows_\`" >> release_notes.md
+          echo "- **Linux**: \`auto_ref_linux_\`" >> release_notes.md
+          echo "- **macOS**: \`auto_ref_macos_\`" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "These are standalone executables that do not require Python to be installed." >> release_notes.md
+          echo "" >> release_notes.md
+          echo "### Usage" >> release_notes.md
+          echo "\`\`\`bash" >> release_notes.md
+          echo "./auto_ref /path/to/root -p PREFIX -o /path/to/output" >> release_notes.md
+          echo "\`\`\`" >> release_notes.md
