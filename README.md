@@ -335,12 +335,13 @@ The below covers the full range of options. Use the `-h` option to show this dia
 Usage:
 ```
 Auto_Reference_Generator [-h] [-v] [-p [PREFIX]] [-s [SUFFIX]]
-                                    [--suffix-option {file,dir,both}] [-acc {file,dir,both}]
+                                    [--suffix-option [{file,dir,both}]] [-acc [{file,dir,both}]]
                                     [-accp [ACC_PREFIX]] [-l [LEVEL_LIMIT]] [-str [START_REF]]
                                     [-dlm [DELIMITER]] [--remove-empty] [--disable-empty-export]
-                                    [-hid] [-fx [{MD5,SHA-1,SHA1,SHA-256}]]
-                                    [--sort-by [{folders_first,alphabetical}]] [-o [OUTPUT]]
-                                    [--disable-meta-dir] [-skp] [-fmt {xlsx,csv,json,ods,xml,dict}]
+                                    [-hid] [--sort-by [{folders_first,alphabetical}]]
+                                    [-fx [{MD5,SHA-1,SHA1,SHA-256} ...]]
+                                    [--max-workers [MAX_WORKERS]] [-o [OUTPUT]] [--disable-meta-dir]
+                                    [-skp] [-fmt {xlsx,csv,json,ods,xml,dict}]
                                     [--options-file [OPTIONS_FILE]]
                                     [--log-level [{DEBUG,INFO,WARNING,ERROR}]]
                                     [--log-file [LOG_FILE]] [-key [KEYWORDS ...]]
@@ -365,8 +366,8 @@ Reference Options:
 
 - `-p [PREFIX]`, `--prefix [PREFIX]`: Set a prefix to append onto generated references
 - `-s [SUFFIX]`, `--suffix [SUFFIX]`: Set a suffix to append onto generated references
-- `--suffix-option {file`, `dir`, `both}`: Set whether to apply the suffix to files, folders or both when generating references
-- `-acc {file`, `dir`, `both}`, `--accession {file`, `dir`, `both}`: Sets the program to create an accession listing - IE a running number of the files.
+- `--suffix-option [{file`, `dir`, `both}]`: Set whether to apply the suffix to files, folders or both when generating references
+- `-acc [{file`, `dir`, `both}]`, `--accession [{file`, `dir`, `both}]`: Sets the program to create an accession listing - IE a running number of the files.
 - `-accp [ACC_PREFIX]`, `--acc-prefix [ACC_PREFIX]`: Sets the Prefix for Accession Mode
 - `-l [LEVEL_LIMIT]`, `--level-limit [LEVEL_LIMIT]`: Set a level limit to generate references to
 - `-str [START_REF]`, `--start-ref [START_REF]`: Set the starting reference number. Won't affect sub-folders/files
@@ -374,8 +375,9 @@ Reference Options:
 - `--remove-empty`: Sets the Program to remove any Empty Directory and Log removals to a text file
 - `--disable-empty-export`: Sets the program to not export a log of removed empty directories, by default will export, this flag disables that
 - `-hid`, `--hidden`: Set to include hidden files/folders in the listing
-- `-fx [{MD5`, `SHA-1`, `SHA1`, `SHA-256}]`, `--fixity [{MD5`, `SHA-1`, `SHA1`, `SHA-256}]`: Set to generate fixities, specify Algorithm to use (default SHA-1)
 - `--sort-by [{folders_first`, `alphabetical}]`: Set the sorting method, 'folders_first' sorts folders first then files alphabetically; 'alphabetically' sorts alphabetically (ignoring folder distinction)
+- `-fx [{MD5`, `SHA-1`, `SHA1`, `SHA-256} ...]`, `--fixity [{MD5`, `SHA-1`, `SHA1`, `SHA-256} ...]`: Set to generate fixities, specify Algorithm to use (default SHA-1)
+- `--max-workers [MAX_WORKERS]`: Set the maximum number of worker threads to use for hash generation when using --fixity (default: 1)
 
 Output Options:
   Options for outputting the generated references

@@ -23,9 +23,9 @@ def create_parser() -> argparse.ArgumentParser:
                         help = "Set a prefix to append onto generated references")
     refgroup.add_argument("-s", "--suffix", required = False, nargs = '?',
                         help = "Set a suffix to append onto generated references")
-    refgroup.add_argument("--suffix-option", required = False, choices= ['file', 'dir', 'both'], default = 'apply_to_files', type = suffix_helper,
+    refgroup.add_argument("--suffix-option", required = False, choices= ['file', 'dir', 'both'], nargs='?', const = 'file', default = None, type = suffix_helper,
                         help = "Set whether to apply the suffix to files, folders or both when generating references")
-    refgroup.add_argument("-acc", "--accession", required = False, choices = ['file', 'dir', 'both'], default = None, type = suffix_helper,
+    refgroup.add_argument("-acc", "--accession", required = False, choices = ['file', 'dir', 'both'], nargs='?', const = 'file', default = None, type = suffix_helper,
                         help="Sets the program to create an accession listing - IE a running number of the files.")
     refgroup.add_argument("-accp", "--acc-prefix", required = False, nargs = '?',
                         help = "Sets the Prefix for Accession Mode")
@@ -41,11 +41,12 @@ def create_parser() -> argparse.ArgumentParser:
                         help = "Sets the program to not export a log of removed empty directories, by default will export, this flag disables that")
     refgroup.add_argument("-hid","--hidden", required = False , action = 'store_true', default = False,
                         help = "Set to include hidden files/folders in the listing")
-    refgroup.add_argument("-fx", "--fixity", required = False, nargs = '?', const = "SHA-1", default = None, choices = ['MD5', 'SHA-1', 'SHA1', 'SHA-256'], type = fixity_helper,
-                        help = "Set to generate fixities, specify Algorithm to use (default SHA-1)")
     refgroup.add_argument("--sort-by", required=False, nargs = '?', default = 'folders_first', choices = ['folders_first','alphabetical'], type=str.lower,
                         help = "Set the sorting method, 'folders_first' sorts folders first then files alphabetically; 'alphabetically' sorts alphabetically (ignoring folder distinction)")
-
+    refgroup.add_argument("-fx", "--fixity", required = False, nargs = '*', default = None, choices = ['MD5', 'SHA-1', 'SHA1', 'SHA-256'], type = fixity_helper, action=EmptyIsTrueFixity,
+                        help = "Set to generate fixities, specify Algorithm to use (default SHA-1)")
+    refgroup.add_argument("--max-workers", required=False, nargs='?', default=1, type=int,
+                        help = "Set the maximum number of worker threads to use for hash generation when using --fixity (default: 1)")
 
     outputgroup = parser.add_argument_group('Output Options','Options for outputting the generated references')
     outputgroup.add_argument("-o", "--output", required = False, nargs = '?',
@@ -118,6 +119,8 @@ def run_cli(args: argparse.Namespace) -> None:
         else:
             logger.info("Confirmation received proceeding to remove empty folders...")
 
+    if args.skip:
+        logger.info("Reference creation will be skipped, proceeding to generate spreadsheet listing only, other options will be ignored")
     if not args.output:
         args.output = os.path.abspath(args.root)
         logger.info(f'Output path defaulting to root directory: {args.output}')
@@ -153,6 +156,7 @@ def run_cli(args: argparse.Namespace) -> None:
                             suffix_options = args.suffix_option,
                             level_limit = args.level_limit,
                             fixity = args.fixity,
+                            max_workers = args.max_workers,
                             empty_flag = args.remove_empty,
                             empty_export_flag = args.disable_empty_export,
                             accession_flag = args.accession,
@@ -185,24 +189,6 @@ def fixity_helper(x: str):
         x = 'SHA-512'
     return x.upper()
 
-def autoref_helper(x: str):
-    x = x.lower()
-    if x in ('c', 'catalog', 'catalogue', 'cat'):
-        x = 'catalog'
-    if x == ('a', 'accession', 'acc'):
-        x = 'accession'
-    if x == ('b', 'both', 'all'):
-        x = 'both'
-    if x == ('g', 'generic', 'gen'):
-        x = 'generic'
-    if x == ('cg', 'catalog-generic', 'catalogue-generic', 'cat-generic', 'catalogue-gen', 'cat-gen', 'catalog-gen'):
-        x = 'catalog-generic'
-    if x == ('ag', 'accession-generic', 'acc-generic', 'accession-gen', 'acc-gen'):
-        x = 'accession-generic'
-    if x == ('bg', 'both-generic', 'all-generic', 'all-gen'):
-        x = 'both-generic'
-    return x.lower()
-
 def suffix_helper(x: str):
     x = x.lower()
     if x in ('f', 'file', 'files'):
@@ -211,14 +197,6 @@ def suffix_helper(x: str):
         x = 'dir'
     if x in ('b', 'both'):
         x = 'both'
-    return x.lower()
-
-def metadata_helper(x: str):
-    x = x.lower()
-    if x in ('e', 'exact'):
-        x = 'exact'
-    if x in ('f', 'flat'):
-        x = 'flat'
     return x.lower()
 
 def fmthelper(x: str):
@@ -244,6 +222,12 @@ def main():
         run_cli(args)
     except KeyboardInterrupt:
         logger.warning("Process interrupted by user, exiting...")
+
+class EmptyIsTrueFixity(argparse.Action):
+    def __call__(self, parser, namespace, values, option_string=None):
+        if len(values) == 0:
+            values = ["SHA-1"]
+        setattr(namespace, self.dest, values)
 
 if __name__ == "__main__":
     main()

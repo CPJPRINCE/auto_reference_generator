@@ -25,3 +25,22 @@ def test_hash_generator_md5(tmp_path):
 
     expected = hashlib.md5(content).hexdigest().upper()
     assert digest == expected
+
+
+def test_hash_generator_multithreaded_sha1(tmp_path):
+    contents = {
+        "a.bin": b"file-a" * 100,
+        "b.bin": b"file-b" * 200,
+        "c.bin": b"file-c" * 300,
+    }
+    paths = []
+    for name, data in contents.items():
+        file_path = tmp_path / name
+        file_path.write_bytes(data)
+        paths.append(str(file_path))
+
+    hg = HashGenerator(algorithm="SHA-1")
+    single = {p: hg.hash_generator(p) for p in paths}
+    multi = hg.hash_generator_multithread(paths, max_workers = 2)
+
+    assert single == multi

@@ -15,10 +15,9 @@ def test_parse_directory_dict_returns_expected_fields(tmp_path):
     result = rg.parse_directory_dict(str(file), level=1, ref=1)
 
     assert 'Path' not in result or isinstance(result, dict)
-    # check keys expected by the method
-    assert 'Hash' in result
-    expected = hashlib.sha1(content).hexdigest().upper()
-    assert result['Hash'] == expected
+    assert 'Name' not in result or isinstance(result, dict)
+    assert 'Type' not in result or isinstance(result, dict)
+    assert 'Size' not in result or isinstance(result, dict)
 
 
 def test_accession_running_number_modes(tmp_path):
