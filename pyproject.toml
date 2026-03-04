@@ -24,12 +24,14 @@ dependencies=["pandas","openpyxl", "tqdm"]
 [project.optional-dependencies]
 addex = ["lxml","odfpy"]
 dev = ["pytest>=7.0"]
+gui = ["flet"]
 
 [project.urls]
 Homepage = "https://github.com/CPJPRINCE/auto_reference_generator"
 Issues = "https://github.com/CPJPRINCE/auto_reference_generator/issues"
 [project.scripts]
 auto_ref = "auto_reference_generator.cli:main"
+auto_ref_gui = "auto_reference_generator.gui:main"
 
 [tool.setuptools.packages.find]
 where = ['.']
