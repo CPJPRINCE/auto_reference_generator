@@ -9,7 +9,7 @@ author: Christopher Prince
 license: Apache License 2.0"
 """
 
-from auto_reference_generator.common import define_output_file, \
+from .common import define_output_file, \
                                             keyword_replace, \
                                             win_file_split, \
                                             filter_win_hidden, \
@@ -25,11 +25,10 @@ from auto_reference_generator.common import define_output_file, \
                                             export_xml, \
                                             suffix_addition, \
                                             suffix_subtraction
-from auto_reference_generator.hash import HashGenerator
+from .hash import HashGenerator
 import pandas as pd
-import os, configparser
-from typing import Optional, Union
-import logging
+import os, configparser, logging
+from typing import Optional, Union, Dict
 from tqdm import tqdm
 from datetime import datetime
 
@@ -62,6 +61,9 @@ class ReferenceGenerator():
     :param keywords_abbreviation: set int for number of characters to abbreviate to for keywords mode
     :param keywords_case_sensitivity: set to change case sensitivity for keyword matching
     :param options_file: set an options file to adjust field parameters
+    :param physical_mode_input: set an input spreadsheet to read from for physical mode (not fully implemented yet)
+    :param input_to_sort: set an input spreadsheet to read from for sorting by reference, requires reference to be in format that can be sorted by padding width (e.g. 001, 002, 003 etc.)
+    :param max_workers: set the number of workers for multithreading, only applicable for fixity generation at the moment
     """
     def __init__(self,
                  root: str,
@@ -72,7 +74,7 @@ class ReferenceGenerator():
                  level_limit: Optional[int] = None,
                  accprefix: Optional[str] = None,
                  start_ref: int = 1,
-                 fixity: Optional[str] = None,
+                 fixity: list[str] = [],
                  empty_flag: bool = False,
                  empty_export_flag: bool = False,
                  skip_flag: bool = False,
@@ -87,8 +89,8 @@ class ReferenceGenerator():
                  keywords_case_sensitivity: Optional[bool] = True,
                  sort_key = lambda x: (os.path.isfile(x), str.casefold(x)),
                  keywords_abbreviation_number: Optional[int] = None,
-                 options_file: str = os.path.join(os.path.dirname(__file__),'options','options.properties')
-                 ) -> None:
+                 options_file: str = os.path.join(os.path.dirname(__file__),'options','options.properties'),
+                 max_workers: int = 1) -> None:
 
         self.root = os.path.abspath(root)
         self.root_level = self.root.count(os.sep)
@@ -131,6 +133,7 @@ class ReferenceGenerator():
         self.empty_export_flag = empty_export_flag
         self.skip_flag = skip_flag
         self.hidden_flag = hidden_flag
+        self.max_workers = max_workers
 
         if options_file is None:
             options_file = os.path.join(os.path.dirname(__file__),'options','options.properties')
@@ -166,9 +169,14 @@ class ReferenceGenerator():
         self.EMPTYDIRSREMOVED = section.get('EMPTYSUFFIX', "_EmptyDirsRemoved")
         self.ACCDELIMTER = section.get('ACCDELIMTER', "-")
         self.ALGORITHM_FIELD = section.get('ALGORITHM_FIELD', 'Algorithm')
-        self.HASH_FIELD = section.get('HASH_FIELD', 'Hash')
+        self.HASH_FIELD = section.get('HASH_FIELD', 'Hash:SHA-1')
         self.ACCFILE_KEYWORD = section.get('ACCFILE_KEYWORD', 'File')
         self.ACCDIR_KEYWORD = section.get('ACCDIR_KEYWORD', 'Dir')
+        self.PHYSICAL_LEVEL_FIELD = section.get('PHYSICAL_LEVEL_FIELD','Level')
+        self.PHYSICAL_LEVEL_SEPERATORS = section.get('PHYSICAL_LEVEL_SEPERATORS', ['administrative group','collection','sub-collection','sub-sub-collection','series','sub-series','file','sub-file','item','peice'])
+        self.PHYSICAL_ITEM = section.get('PHYSICAL_ITEM', ['item','peice'])
+        self.REFERENCE_PADDING = section.get('REFERENCE_PADDING', 5)
+
         logger.debug(f'Configuration set to: {[{k,v} for k,v in (section.items())]}')
 
     def remove_empty_directories(self, empty_export_flag: bool = False) -> None:
@@ -230,15 +238,12 @@ class ReferenceGenerator():
             logger.exception(f'Failed to filter {directory}: {e}')
             raise
 
-    def parse_directory_dict(self, file_path: str, level: int, ref: Union[str,int]) -> dict:
+    def parse_directory_dict(self, file_path: str, level: int, ref: Union[str,int], class_dict: Optional[dict] = None) -> dict:
         """
         Parses directory / file data into a dict which is then appended to a list
         """
         try:
-            if file_path.startswith(u'\\\\?\\'):
-                parse_path = file_path.replace(u'\\\\?\\', "")
-            else:
-                parse_path = file_path
+            parse_path = win_256_check(file_path)
             file_stats = os.stat(parse_path)
             if self.accession_flag is not None:
                 if self.delimiter_flag is False:
@@ -249,7 +254,8 @@ class ReferenceGenerator():
                 file_type = "Dir"
             else:
                 file_type = "File"
-            class_dict = {
+            if class_dict is None:
+                class_dict = {
                         self.PATH_FIELD: str(os.path.abspath(parse_path)),
                         self.RELATIVE_FIELD: str(parse_path).replace(self.root_path, ""),
                         self.BASENAME_FIELD: os.path.splitext(os.path.basename(file_path))[0],
@@ -262,11 +268,8 @@ class ReferenceGenerator():
                         self.ACCESSDATE_FIELD: datetime.fromtimestamp(file_stats.st_atime),
                         self.LEVEL_FIELD: level,
                         self.REF_SECTION: ref}
-
-            if self.fixity and not os.path.isdir(parse_path):
-                hash = HashGenerator(self.fixity).hash_generator(parse_path)
-                class_dict.update({self.ALGORITHM_FIELD: self.fixity, self.HASH_FIELD: hash})
-            self.record_list.append(class_dict)
+            else:
+                class_dict = class_dict
             return class_dict
         except OSError as e:
             logger.exception(f'OS Error parsing dictionary {file_path}: {e}')
@@ -274,6 +277,18 @@ class ReferenceGenerator():
         except Exception as e:
             logger.exception(f'Failed to parse {file_path}: {e}')
             raise
+
+    def generate_or_fetch_hashes(self, file_path: str, fixity: str, hash_map: Optional[Dict[str,str]] = None) -> Optional[str]:
+        parse_path = win_256_check(file_path)
+        if len(fixity) != 0 and not os.path.isdir(parse_path):
+            if hash_map is not None and fixity in hash_map and parse_path in hash_map[fixity]:
+                hash = hash_map[fixity].get(parse_path)
+                logger.debug(f'Hash for {parse_path}: {hash} found in pre-generated hash map.')
+                return hash
+            else:
+                hash = HashGenerator(fixity).hash_generator(parse_path)
+                logger.debug(f'Hash for {parse_path}: {hash} generated.')
+                return hash
 
     def list_directories(self, directory: str, ref: Union[str,int] = 1) -> None:
         """
@@ -287,27 +302,42 @@ class ReferenceGenerator():
                 level = directory.replace(u'\\\\?\\', "").count(os.sep) - self.root_level + 1
             else:
                 level = directory.count(os.sep) - self.root_level + 1
+            hash_map = None
+            # Generate Hashes if using Multithreading
+            if self.fixity and self.max_workers > 1:
+                hash_map = {}
+                file_list = [win_256_check(file) for file in list_directory if not os.path.isdir(file)]
+                if len(file_list) > 0:
+                    for algorithm in self.fixity:
+                        hash_results = HashGenerator(algorithm).hash_generator_multithread(file_list, max_workers=self.max_workers)
+                        hash_map.update({algorithm: hash_results})
+                            #{algorithm, hash_results})
             for file_path in list_directory:
-
-                #Keyword Replacement
+                # Keyword Replacement
                 if self.keywords_list is not None:
-                    #Does this not need to be ordered after keyword_replace is successful or does it just werk?
+                    # Does this not need to be ordered after keyword_replace is successful or does it just werk?
                     tmp_ref = ref
                     ref = keyword_replace(self.keywords_list, file_path, str(ref), self.keywords_mode,self.keywords_abbreviation_number, self.keywords_case_sensitivity)
                     if ref != tmp_ref:
                         if self.keywords_retain_order is False:
-                            #Potentially may not be int...
+                            # Potentially may not be int...
                             pref = tmp_ref - 1
                         elif self.keywords_retain_order is True:
                             pref = tmp_ref
-                #Suffix Addition
+                # Suffix Addition
                 if self.suffix is not None:
                     ref = suffix_addition(file_path, str(ref), self.suffix, self.suffix_options)
                 # Level Limit Check
                 if self.level_limit is not None and level > self.level_limit:
-                    self.parse_directory_dict(file_path, level, ref='')
+                    record_dict = self.parse_directory_dict(file_path, level, ref='')
                 else:
-                    self.parse_directory_dict(file_path, level, ref)
+                    record_dict = self.parse_directory_dict(file_path, level, ref)
+                # Hash Generation - Generates Hashes if fixity is set and file is not a directory, also accounts for multithreading hash generation.
+                if self.fixity and not os.path.isdir(file_path):
+                    for algorithm in self.fixity:
+                        hash = self.generate_or_fetch_hashes(file_path, algorithm, hash_map=hash_map)
+                        record_dict.update({f"{self.HASH_FIELD}:{algorithm}": hash})
+                self.record_list.append(record_dict)
                 # Suffix Removal for next reference increment
                 if self.suffix is not None:
                     ref = suffix_subtraction(file_path, str(ref), self.suffix, self.suffix_options)
@@ -335,7 +365,7 @@ class ReferenceGenerator():
         Any errors are turned to 0 and the result are based on the reference loop initialisation.
         """
         try:
-            self.parse_directory_dict(file_path = self.root, level = 0, ref = 0)
+            self.record_list.append(self.parse_directory_dict(file_path = self.root, level = 0, ref = 0))
             self.list_directories(self.root, self.start_ref)
             self.df = pd.DataFrame(self.record_list).copy()
             merged = self.df.merge(self.df[[self.INDEX_FIELD, self.REF_SECTION]], how = 'left', left_on = self.PARENT_FIELD,
@@ -348,15 +378,6 @@ class ReferenceGenerator():
             merged = merged.astype({self.PARENT_REF:str})
             merged.loc[:, self.PARENT_REF] = parent_series.astype(str)
             self.df = merged
-
-            # old method - resulted in dtype warning
-            # self.df = self.df.merge(self.df[[INDEX_FIELD, REF_SECTION]], how = 'left', left_on = PARENT_FIELD,
-            #                        right_on = INDEX_FIELD)
-            #self.df = self.df.drop([f'{INDEX_FIELD}_y'], axis = 1)
-            #self.df = self.df.rename(columns = {f'{REF_SECTION}_x': REF_SECTION, f'{REF_SECTION}_y': PARENT_REF,
-            #                                  f'{INDEX_FIELD}_x': INDEX_FIELD})
-            #self.df.loc[:, PARENT_REF] = self.df[PARENT_REF].fillna(0)
-            #self.df.loc[:, PARENT_REF] = self.df.astype({PARENT_REF: str})
 
             self.df.index.name = "Index"
             self.list_loop = self.df[[self.REF_SECTION, self.PARENT_FIELD, self.LEVEL_FIELD]].values.tolist()
@@ -514,7 +535,7 @@ class ReferenceGenerator():
             self.remove_empty_directories(self.empty_export_flag)
         self.init_dataframe()
         output_file = define_output_file(self.output_path, self.root, meta_dir_flag = self.meta_dir_flag,
-                                         output_suffix = self.OUTPUTSUFFIX ,output_format = self.output_format)
+                                        output_suffix = self.OUTPUTSUFFIX ,output_format = self.output_format)
         if self.output_format == "xlsx":
             export_xl(df = self.df, output_filename = output_file)
         elif self.output_format == "csv":
@@ -527,3 +548,4 @@ class ReferenceGenerator():
             export_xml(df = self.df, output_filename = output_file)
         elif self.output_format == "dict":
             return export_dict(df = self.df)
+

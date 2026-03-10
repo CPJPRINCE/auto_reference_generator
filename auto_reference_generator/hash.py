@@ -5,17 +5,19 @@ author: Christopher Prince
 license: Apache License 2.0"
 """
 
-import hashlib, logging
-from auto_reference_generator.common import win_256_check
+import hashlib, logging, os, zipfile
+from .common import win_256_check
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Dict, Iterable, Optional
 
 logger = logging.getLogger(__name__)
 
 class HashGenerator():
-    def __init__(self, algorithm: str = "SHA-1"):
+    def __init__(self, algorithm: str = "SHA-1", buffer: int = 4096):
         self.algorithm = algorithm
-        self.buffer = 4096
+        self.buffer = buffer
 
-    def hash_generator(self, file_path: str):
+    def hash_generator(self, file_path: str) -> str:
         file_path = win_256_check(file_path)
         if "SHA-1" in self.algorithm:
             hash = hashlib.sha1()
@@ -38,6 +40,9 @@ class HashGenerator():
                 f.close()
             logger.debug(f'Generated Hash: {hash.hexdigest().upper()}')
             return hash.hexdigest().upper()
+        except KeyboardInterrupt:
+            logger.warning('Hash generation interrupted by user.')
+            raise        
         except FileNotFoundError as e:
             logger.exception(f'File Not Found generating Hash: {e}')
             raise
@@ -47,3 +52,20 @@ class HashGenerator():
         except Exception as e:
             logger.exception(f'Error Generating Hash: {e}')
             raise
+
+    def hash_generator_multithread(self, files_list: Iterable[str], max_workers: Optional[int] = 2) -> Dict[str, str]:
+        hash_results = {}
+        if max_workers is None or int(max_workers) < 1:
+            logger.warning(f'Max workers must be at least 1. Defaulting to 1 worker.')
+            max_workers = 1
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            future_to_hash = {executor.submit(self.hash_generator, file): file for file in files_list}
+            for future in as_completed(future_to_hash):
+                file = future_to_hash[future]
+                try:
+                    hash = future.result()
+                    hash_results[file] = hash
+                except Exception as e:
+                    logger.exception(f'Error generating hash for {file}: {e}')
+                    hash_results[file] = None
+        return hash_results

@@ -1,7 +1,7 @@
 import os
 import json
 import pandas as pd
-from auto_reference_generator.reference_generator import ReferenceGenerator
+from auto_reference_generator.referenceGen import ReferenceGenerator
 
 
 def test_reference_loop_prefix_and_parent_concat():
