@@ -90,11 +90,23 @@ class ReferenceGenerator():
                  sort_key = lambda x: (os.path.isfile(x), str.casefold(x)),
                  keywords_abbreviation_number: Optional[int] = None,
                  options_file: str = os.path.join(os.path.dirname(__file__),'options','options.properties'),
+                 physical_mode_input: Optional[str] = None,
+                 input_to_sort: Optional[str] = None,
                  max_workers: int = 1) -> None:
 
         self.root = os.path.abspath(root)
         self.root_level = self.root.count(os.sep)
         self.root_path = os.path.dirname(self.root)
+        self.input_to_sort = input_to_sort
+        if self.input_to_sort is None:
+            self.input_to_sort_flag = False
+        else:
+            self.input_to_sort_flag = True
+        self.physical_mode_input = physical_mode_input
+        if self.physical_mode_input is None:
+            self.physical_mode_flag = False
+        else:
+            self.physical_mode_flag = True
         self.output_path = output_path
         self.output_format = output_format
         self.prefix = prefix
@@ -531,11 +543,20 @@ class ReferenceGenerator():
         """
         Runs Program :)
         """
-        if self.empty_flag:
-            self.remove_empty_directories(self.empty_export_flag)
-        self.init_dataframe()
-        output_file = define_output_file(self.output_path, self.root, meta_dir_flag = self.meta_dir_flag,
-                                        output_suffix = self.OUTPUTSUFFIX ,output_format = self.output_format)
+        if self.physical_mode_flag is True:
+            self.physical_mode()
+            output_file = define_output_file(self.output_path, self.physical_mode_input.rsplit('.',1)[0], meta_dir_flag = False,
+                                         output_suffix = self.OUTPUTSUFFIX ,output_format = self.output_format)
+        elif self.input_to_sort_flag is True:
+            self.sort_spreadsheet_by_reference(padding_width=int(self.REFERENCE_PADDING))
+            output_file = define_output_file(self.output_path, self.input_to_sort.rsplit('.',1)[0], meta_dir_flag = False,
+                                         output_suffix = self.OUTPUTSUFFIX ,output_format = self.output_format)
+        else:
+            if self.empty_flag:
+                self.remove_empty_directories(self.empty_export_flag)
+            self.init_dataframe()
+            output_file = define_output_file(self.output_path, self.root, meta_dir_flag = self.meta_dir_flag,
+                                            output_suffix = self.OUTPUTSUFFIX ,output_format = self.output_format)
         if self.output_format == "xlsx":
             export_xl(df = self.df, output_filename = output_file)
         elif self.output_format == "csv":
