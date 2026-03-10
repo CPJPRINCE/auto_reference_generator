@@ -76,12 +76,6 @@ def create_parser() -> argparse.ArgumentParser:
     keywordsgroup.add_argument("--keywords-abbreviation-number", required = False, nargs='?', default = 3, type = int,
                         help = "Set to set the number of letters to abbreviate for 'firstletters' mode, does not impact 'initialise' mode.")
 
-    # physicalgroup = parser.add_argument_group('Physical Mode Options','Options for using physical mode functionality')
-    # physicalgroup.add_argument("--physical-mode-input", required = False, nargs = '?', default = None,
-    #                     help="Set to conduct an Auto Generation of a Specify a path to a Spreadsheet")
-    # physicalgroup.add_argument("--spreadsheet-to-sort",required= False, nargs = '?',default= None,
-    #                     help="Set to a path to a Spreadsheet containing an 'Archive_Reference' Column to sort the spreadsheet according to hierarchy")
-
     return parser
 
 def run_cli(args: argparse.Namespace) -> None:
@@ -172,10 +166,7 @@ def run_cli(args: argparse.Namespace) -> None:
                             sort_key = sort_key,
                             delimiter = args.delimiter,
                             keywords_abbreviation_number = args.keywords_abbreviation_number,
-                            options_file = args.options_file
-                            # physical_mode_input = args.physical_mode_input  ***Placeholder for Physical mode
-                            # input_to_sort = args.spreadsheet_to_sort        ***Placeholder for Physical mode
-                            ).main()
+                            options_file = args.options_file).main()
     logger.info(f"Run Complete! Ran for: {running_time(start_time)}")
 
 def fixity_helper(x: str):
