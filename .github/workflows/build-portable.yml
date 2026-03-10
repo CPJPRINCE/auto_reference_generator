@@ -3,16 +3,79 @@ name: Build Portable Executables with Nuitka
 on:
   push:
     tags:
-      - 'v*'
-      - 'test-*'
-
+      - '*'
+    branches:
+      - 'dev'
+    paths-ignore:
+      - 'README.md'
+      - 'docs/**'
+      - 'assets/**'
+      - '.github/**'
+  pull_request:
+    branches: [master, dev]
+    paths-ignore:
+      - 'README.md'
+      - 'docs/**'
+      - 'assets/**'
+      - '.github/**'
 permissions:
   contents: write
 
 jobs:
+  verify-build-trigger:
+    name: Verify Build Trigger
+    runs-on: ubuntu-latest
+    outputs:
+      should_build: ${{ steps.check-ref.outputs.should_build }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check branch/tag rules
+        id: check-ref
+        run: |
+          event_name="${{ github.event_name }}"
+          ref_type="${{ github.ref_type }}"
+          ref_name="${{ github.ref_name }}"
+
+          if [ "$event_name" = "pull_request" ]; then
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+            echo "Build enabled for pull request."
+            exit 0
+          fi
+
+          if [ "$ref_type" = "branch" ] && [ "$ref_name" = "dev" ]; then
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+            echo "Build enabled for push to dev."
+            exit 0
+          fi
+
+          if [ "$ref_type" = "tag" ]; then
+            if [[ "$ref_name" == v* ]]; then
+              git fetch origin master --depth=1
+              if git merge-base --is-ancestor "$GITHUB_SHA" "origin/master"; then
+                echo "should_build=true" >> "$GITHUB_OUTPUT"
+                echo "Build enabled for v* tag on master."
+              else
+                echo "should_build=false" >> "$GITHUB_OUTPUT"
+                echo "Tag $ref_name matches v* but is not on master; skipping build."
+              fi
+            else
+              echo "should_build=true" >> "$GITHUB_OUTPUT"
+              echo "Build enabled for non-v* tag: $ref_name"
+            fi
+            exit 0
+          fi
+
+          echo "should_build=false" >> "$GITHUB_OUTPUT"
+          echo "Unsupported ref type/rule; skipping build."
+
   build-windows:
     name: Build Windows Portable
     runs-on: windows-latest
+    needs: verify-build-trigger
+    if: needs.verify-build-trigger.outputs.should_build == 'true'
     steps:
       - uses: actions/checkout@v4
 
