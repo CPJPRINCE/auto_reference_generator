@@ -61,6 +61,9 @@ class ReferenceGenerator():
     :param keywords_abbreviation: set int for number of characters to abbreviate to for keywords mode
     :param keywords_case_sensitivity: set to change case sensitivity for keyword matching
     :param options_file: set an options file to adjust field parameters
+    :param physical_mode_input: set an input spreadsheet to read from for physical mode (not fully implemented yet)
+    :param input_to_sort: set an input spreadsheet to read from for sorting by reference, requires reference to be in format that can be sorted by padding width (e.g. 001, 002, 003 etc.)
+    :param max_workers: set the number of workers for multithreading, only applicable for fixity generation at the moment
     """
     def __init__(self,
                  root: str,
