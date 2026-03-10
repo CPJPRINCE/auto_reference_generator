@@ -1,5 +1,5 @@
 import os
-from auto_reference_generator.reference_generator import ReferenceGenerator
+from auto_reference_generator.referenceGen import ReferenceGenerator
 
 
 def _to_abs(p):

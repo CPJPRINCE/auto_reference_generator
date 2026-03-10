@@ -5,8 +5,8 @@ author: Christopher Prince
 license: Apache License 2.0"
 """
 
-import hashlib, logging
-from auto_reference_generator.common import win_256_check
+import hashlib, logging, os, zipfile
+from .common import win_256_check
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Dict, Iterable, Optional
 
@@ -40,6 +40,9 @@ class HashGenerator():
                 f.close()
             logger.debug(f'Generated Hash: {hash.hexdigest().upper()}')
             return hash.hexdigest().upper()
+        except KeyboardInterrupt:
+            logger.warning('Hash generation interrupted by user.')
+            raise        
         except FileNotFoundError as e:
             logger.exception(f'File Not Found generating Hash: {e}')
             raise

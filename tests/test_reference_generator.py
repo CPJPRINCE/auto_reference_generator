@@ -1,6 +1,6 @@
 import os
 import hashlib
-from auto_reference_generator.reference_generator import ReferenceGenerator
+from auto_reference_generator.referenceGen import ReferenceGenerator
 
 
 def test_parse_directory_dict_returns_expected_fields(tmp_path):
