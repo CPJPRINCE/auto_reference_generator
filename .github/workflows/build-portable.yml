@@ -4,20 +4,21 @@ on:
   push:
     tags:
       - '*'
-    branches:
-      - 'dev'
     paths-ignore:
       - 'README.md'
       - 'docs/**'
       - 'assets/**'
       - '.github/**'
   pull_request:
-    branches: [master, dev]
+    branches:
+      - dev      
+      - master
     paths-ignore:
       - 'README.md'
       - 'docs/**'
       - 'assets/**'
       - '.github/**'
+
 permissions:
   contents: write
 
@@ -83,10 +84,12 @@ jobs:
     needs: verify-tag-branch-rule
     if: needs.verify-tag-branch-rule.outputs.should_build == 'true'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v6
         with:
           python-version: '3.11'
 
@@ -155,6 +158,7 @@ jobs:
           path: auto_ref_windows_*.zip
 
       - name: Upload to release
+        if: needs.verify-tag-branch-rule.outputs.publish_release == 'true'
         uses: softprops/action-gh-release@v1
         with:
           draft: true
@@ -168,10 +172,12 @@ jobs:
     needs: verify-tag-branch-rule
     if: needs.verify-tag-branch-rule.outputs.should_build == 'true'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v6
         with:
           python-version: '3.11'
 
@@ -222,7 +228,7 @@ jobs:
           path: auto_ref_linux_*.tar.gz
 
       - name: Upload to release
-        if: startsWith(github.ref, 'refs/tags/')
+        if: needs.verify-tag-branch-rule.outputs.publish_release == 'true'
         uses: softprops/action-gh-release@v1
         with:
           draft: true
@@ -236,10 +242,12 @@ jobs:
     needs: verify-tag-branch-rule
     if: needs.verify-tag-branch-rule.outputs.should_build == 'true'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v6
         with:
           python-version: '3.11'
 
@@ -280,13 +288,13 @@ jobs:
           tar -czf "auto_ref_macos_${version}.tar.gz" -C build auto_ref
 
       - name: Upload macOS artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: auto_ref-macos
           path: auto_ref_macos_*.tar.gz
 
       - name: Upload to release
-        if: startsWith(github.ref, 'refs/tags/')
+        if: needs.verify-tag-branch-rule.outputs.publish_release == 'true'
         uses: softprops/action-gh-release@v1
         with:
           draft: true
@@ -298,9 +306,11 @@ jobs:
     name: Create Release Notes
     runs-on: ubuntu-latest
     needs: [verify-tag-branch-rule, build-windows, build-linux, build-macos]
-    if: startsWith(github.ref, 'refs/tags/') && needs.verify-tag-branch-rule.outputs.should_build == 'true'
+    if: needs.verify-tag-branch-rule.outputs.publish_release == 'true'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
 
       - name: Generate Release Notes
         run: |
