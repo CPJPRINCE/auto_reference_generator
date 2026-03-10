@@ -9,7 +9,7 @@ author: Christopher Prince
 license: Apache License 2.0"
 """
 
-from auto_reference_generator.common import define_output_file, \
+from .common import define_output_file, \
                                             keyword_replace, \
                                             win_file_split, \
                                             filter_win_hidden, \
@@ -25,7 +25,7 @@ from auto_reference_generator.common import define_output_file, \
                                             export_xml, \
                                             suffix_addition, \
                                             suffix_subtraction
-from auto_reference_generator.hash import HashGenerator
+from .hash import HashGenerator
 import pandas as pd
 import os, configparser, logging
 from typing import Optional, Union, Dict
@@ -569,6 +569,7 @@ class ReferenceGenerator():
 
     def physical_mode(self) -> pd.DataFrame:
         """
+        TEST USE ONLY - NOT FULLY IMPLEMENTED YET
         Physical (catalogue spreadsheet) mode - reads an inventory and generates Archive_Reference
         values from the physical Level definitions contained in `PHSYICAL_LEVEL_SEPERATORS` and the
         `PHYSICAL_LEVEL_FIELD` within the spreadsheet. Uses the `prefix` property as the top-level
