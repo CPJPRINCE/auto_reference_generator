@@ -9,7 +9,7 @@ author: Christopher Prince
 license: Apache License 2.0"
 """
 
-from .common import define_output_file, \
+from auto_reference_generator.common import define_output_file, \
                                             keyword_replace, \
                                             win_file_split, \
                                             filter_win_hidden, \
@@ -25,7 +25,7 @@ from .common import define_output_file, \
                                             export_xml, \
                                             suffix_addition, \
                                             suffix_subtraction
-from .hash import HashGenerator
+from auto_reference_generator.hash import HashGenerator
 import pandas as pd
 import os, configparser, logging
 from typing import Optional, Union, Dict

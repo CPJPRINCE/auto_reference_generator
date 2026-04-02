@@ -1,7 +1,7 @@
-from .referenceGen import ReferenceGenerator
+from auto_reference_generator.referenceGen import ReferenceGenerator
 import argparse, os, logging, inspect
 from importlib import metadata
-from .common import running_time
+from auto_reference_generator.common import running_time
 from datetime import datetime
 
 logger = logging.getLogger(__name__)

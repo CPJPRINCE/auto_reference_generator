@@ -6,7 +6,7 @@ license: Apache License 2.0"
 """
 
 import hashlib, logging, os, zipfile
-from .common import win_256_check
+from auto_reference_generator.common import win_256_check
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Dict, Iterable, Optional
 
