@@ -254,13 +254,17 @@ class ReferenceGenerator():
                 file_type = "Dir"
             else:
                 file_type = "File"
+            absolute_path = os.path.abspath(parse_path)
+            parent_path = os.path.abspath(os.path.join(absolute_path, os.pardir))
+            if parent_path == absolute_path:
+                parent_path = ""
             if class_dict is None:
                 class_dict = {
-                        self.PATH_FIELD: str(os.path.abspath(parse_path)),
+                        self.PATH_FIELD: str(absolute_path),
                         self.RELATIVE_FIELD: str(parse_path).replace(self.root_path, ""),
                         self.BASENAME_FIELD: os.path.splitext(os.path.basename(file_path))[0],
                         self.EXTENSION_FIELD: os.path.splitext(file_path)[1],
-                        self.PARENT_FIELD: os.path.abspath(os.path.join(os.path.abspath(parse_path), os.pardir)),
+                        self.PARENT_FIELD: parent_path,
                         self.ATTRIBUTE_FIELD: file_type,
                         self.SIZE_FIELD: file_stats.st_size,
                         self.CREATEDATE_FIELD: datetime.fromtimestamp(file_stats.st_ctime),
@@ -470,7 +474,20 @@ class ReferenceGenerator():
                             pass
                         else:
                             new_ref = str(parent_ref) + delimiter + str(new_ref)
-                parent = self.df.loc[idx,self.PARENT_FIELD].item()
+                next_parent = self.df.loc[idx,self.PARENT_FIELD].item()
+                # root level handling IE "D:\"
+                if next_parent == parent:
+                    if level == 0:
+                        final_ref = str(ref)
+                        if self.prefix:
+                            final_ref = str(self.prefix)
+                    else:
+                        final_ref = str(new_ref)
+                        if self.prefix:
+                            final_ref = str(self.prefix) + delimiter + str(final_ref)
+                    self.reference_list.append(final_ref)
+                    return
+                parent = next_parent
                 track = track + 1
                 self.reference_loop(ref, parent, track, level, new_ref, delimiter=delimiter)
         except KeyError as e:
