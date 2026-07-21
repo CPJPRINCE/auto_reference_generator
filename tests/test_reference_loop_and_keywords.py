@@ -87,3 +87,15 @@ def test_reference_loop_custom_delimiter_and_suffix():
     rg.reference_loop(ref='', parent='/parent', track=2, level=2, new_ref='1_SFX', delimiter='-')
     # parent_ref=10, new_ref should become '10-1_SFX'
     assert rg.reference_list[-1] == '10-1_SFX'
+
+
+def test_reference_loop_stops_on_self_parent_row():
+    rg = ReferenceGenerator('.', prefix=None)
+    rg.df = pd.DataFrame([
+        {'FullName': 'D:/', 'Ref_Section': 0, 'Parent': 'D:/'}
+    ])
+    rg.reference_list = []
+
+    rg.reference_loop(ref='1', parent='D:/', track=1, level=1, delimiter='/')
+
+    assert rg.reference_list[-1] == '1'
