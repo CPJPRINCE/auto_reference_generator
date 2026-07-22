@@ -152,7 +152,7 @@ jobs:
           Compress-Archive -Path "auto_ref" -DestinationPath "auto_ref_windows_$version.zip"
 
       - name: Upload Windows artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: auto_ref-windows
           path: auto_ref_windows_*.zip
@@ -222,7 +222,7 @@ jobs:
           tar -czf "auto_ref_linux_${version}.tar.gz" -C build auto_ref
 
       - name: Upload Linux artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: auto_ref-linux
           path: auto_ref_linux_*.tar.gz
@@ -288,7 +288,7 @@ jobs:
           tar -czf "auto_ref_macos_${version}.tar.gz" -C build auto_ref
 
       - name: Upload macOS artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: auto_ref-macos
           path: auto_ref_macos_*.tar.gz
