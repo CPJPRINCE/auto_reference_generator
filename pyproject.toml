@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "auto_reference_generator"
-version = "1.3.10"
+version = "1.3.11"
 authors = [
     {name="Christopher Prince", email="c.pj.prince@gmail.com"}
     ]
@@ -33,8 +33,11 @@ auto_ref = "auto_reference_generator.cli:main"
 
 [tool.setuptools.packages.find]
 where = ['.']
-include = ['auto_reference_generator']
+include = ['auto_reference_generator*']
 exclude = []
+
+[tool.setuptools.package-data]
+opex_manifest_generator = ["options/**/*", "options/*"]
 
 [tool.pytest.ini_options]
 minversion = "7.0"
